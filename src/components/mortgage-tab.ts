@@ -184,7 +184,7 @@ export class MortgageTab extends LitElement {
                                   <h3>Chiusura Anticipata</h3>
                                   <div class="closure-summary">
                                     ${hasSavings ? html`<p><strong>Risparmi mensili:</strong> ${new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(input.risparmiMensiliForecast!)}</p>` : ''}
-                                    ${input.detrazioniInteressi ? html`<p><strong>Detrazioni interessi:</strong> 19% annuale (max €4.000/anno)</p>` : ''}
+                                    ${input.detrazioniInteressi ? html`<p><strong>Detrazioni interessi:</strong> 19% annuale (max €760/anno)</p>` : ''}
                                     ${input.detrazioneRistrutturazione ? html`<p><strong>Detrazione ristrutturazione:</strong> 36% di €${new Intl.NumberFormat('it-IT').format(input.detrazioneRistrutturazione)} in 10 rate</p>` : ''}
                                   </div>
                                   <div class="closure-info">
@@ -220,7 +220,7 @@ export class MortgageTab extends LitElement {
                                   <h3>Chiusura Anticipata</h3>
                                   <div class="closure-summary">
                                     ${hasSavings ? html`<p><strong>Risparmi mensili:</strong> ${new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(input.risparmiMensiliForecast!)}</p>` : ''}
-                                    ${input.detrazioniInteressi ? html`<p><strong>Detrazioni interessi:</strong> 19% annuale (max €4.000/anno)</p>` : ''}
+                                    ${input.detrazioniInteressi ? html`<p><strong>Detrazioni interessi:</strong> 19% annuale (max €760/anno)</p>` : ''}
                                     ${input.detrazioneRistrutturazione ? html`<p><strong>Detrazione ristrutturazione:</strong> 36% di €${new Intl.NumberFormat('it-IT').format(input.detrazioneRistrutturazione)} in 10 rate</p>` : ''}
                                   </div>
                                   <p class="closure-warning">

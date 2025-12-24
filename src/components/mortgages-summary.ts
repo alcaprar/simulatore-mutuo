@@ -322,7 +322,7 @@ export class MortgagesSummary extends LitElement {
                                 ? html`
                                     <dl class="detail-list">
                                       ${hasSavings ? html`<dt>Risparmi mensili:</dt><dd>${this._formatCurrency(input.risparmiMensiliForecast!)}</dd>` : ''}
-                                      ${input.detrazioniInteressi ? html`<dt>Detrazioni interessi:</dt><dd>19% annuale (max €4.000/anno)</dd>` : ''}
+                                      ${input.detrazioniInteressi ? html`<dt>Detrazioni interessi:</dt><dd>19% annuale (max €760/anno)</dd>` : ''}
                                       ${input.detrazioneRistrutturazione ? html`<dt>Detrazione ristrutturazione:</dt><dd>36% in 10 rate</dd>` : ''}
                                       <dt class="closure-success">Data Chiusura:</dt>
                                       <dd class="closure-success">${this._getMonthName(closure.meseChiusura! % 12)} ${closure.annoChiusura}</dd>
