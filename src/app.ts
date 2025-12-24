@@ -102,12 +102,12 @@ export class MutuoApp extends LitElement {
       if (this.tabs.some((t) => t.id === hash)) {
         this.activeTabId = hash;
       } else {
-        // Tab doesn't exist, go to first tab
-        window.location.hash = this.tabs[0].id;
+        // Tab doesn't exist, go to resoconto (default)
+        window.location.hash = 'resoconto';
       }
     } else {
-      // No hash, set to first tab
-      window.location.hash = this.tabs[0].id;
+      // No hash, set to resoconto (default)
+      window.location.hash = 'resoconto';
     }
   }
 
