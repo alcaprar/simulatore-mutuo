@@ -1,43 +1,43 @@
-import { LitElement, css, html } from 'lit'
-import { customElement, property, state } from 'lit/decorators.js'
-import type { MortgageData, AppTab, EarlyClosureData } from '../types.js'
-import { StorageService } from '../storage.js'
-import { MortgageCalculator } from '../utils/mortgage-calculator.js'
+import { LitElement, css, html } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import type { MortgageData, AppTab, EarlyClosureData } from '../types.js';
+import { StorageService } from '../storage.js';
+import { MortgageCalculator } from '../utils/mortgage-calculator.js';
 
 interface MortgageSummaryRow {
-  tab: AppTab
-  mortgage: MortgageData
-  totalInterests: number
-  totalOtherCosts: number
-  grandTotal: number
+  tab: AppTab;
+  mortgage: MortgageData;
+  totalInterests: number;
+  totalOtherCosts: number;
+  grandTotal: number;
 }
 
 @customElement('mortgages-summary')
 export class MortgagesSummary extends LitElement {
   @property({ type: Array })
-  tabs: AppTab[] = []
+  tabs: AppTab[] = [];
 
   @state()
-  private mortgageRows: MortgageSummaryRow[] = []
+  private mortgageRows: MortgageSummaryRow[] = [];
 
   updated(changedProperties: Map<string, unknown>) {
     if (changedProperties.has('tabs')) {
-      this.loadMortgages()
+      this.loadMortgages();
     }
   }
 
   private loadMortgages(): void {
-    const rows: MortgageSummaryRow[] = []
+    const rows: MortgageSummaryRow[] = [];
 
     for (const tab of this.tabs) {
       // Skip fixed tabs
-      if (tab.isFixed) continue
+      if (tab.isFixed) continue;
 
-      const mortgage = StorageService.getMortgage(tab.id)
+      const mortgage = StorageService.getMortgage(tab.id);
       if (mortgage) {
-        const totalInterests = this._calculateTotalInterests(mortgage)
-        const totalOtherCosts = this._calculateTotalOtherCosts(mortgage)
-        const grandTotal = totalInterests + totalOtherCosts
+        const totalInterests = this._calculateTotalInterests(mortgage);
+        const totalOtherCosts = this._calculateTotalOtherCosts(mortgage);
+        const grandTotal = totalInterests + totalOtherCosts;
 
         rows.push({
           tab,
@@ -45,53 +45,53 @@ export class MortgagesSummary extends LitElement {
           totalInterests,
           totalOtherCosts,
           grandTotal,
-        })
+        });
       }
     }
 
-    this.mortgageRows = rows
+    this.mortgageRows = rows;
   }
 
   private _calculateTotalInterests(mortgage: MortgageData): number {
-    if (mortgage.amortization.length === 0) return 0
-    return mortgage.amortization[mortgage.amortization.length - 1].totaleIntaressPagato
+    if (mortgage.amortization.length === 0) return 0;
+    return mortgage.amortization[mortgage.amortization.length - 1].totaleIntaressPagato;
   }
 
   private _calculateTotalOtherCosts(mortgage: MortgageData): number {
-    const input = mortgage.input
-    let totalCosts = 0
+    const input = mortgage.input;
+    let totalCosts = 0;
 
     // Spese istruttoria
     if (input.speseIstruttoria.tipo === 'percentage') {
-      totalCosts += (input.importoTotale * input.speseIstruttoria.valore) / 100
+      totalCosts += (input.importoTotale * input.speseIstruttoria.valore) / 100;
     } else {
-      totalCosts += input.speseIstruttoria.valore
+      totalCosts += input.speseIstruttoria.valore;
     }
 
     // Spese incasso rata
-    const numMonths = input.durataAnni * 12
-    totalCosts += input.speseIncassoRata * numMonths
+    const numMonths = input.durataAnni * 12;
+    totalCosts += input.speseIncassoRata * numMonths;
 
     // Spesa perizia
-    totalCosts += input.spesaPerizia
+    totalCosts += input.spesaPerizia;
 
-    return totalCosts
+    return totalCosts;
   }
 
   private _calculateEffectiveRate(mortgage: MortgageData): number {
-    const totalInterests = this._calculateTotalInterests(mortgage)
-    const totalOtherCosts = this._calculateTotalOtherCosts(mortgage)
-    const totalCost = totalInterests + totalOtherCosts
-    const initialAmount = mortgage.input.importoTotale
-    return (totalCost / initialAmount) * 100
+    const totalInterests = this._calculateTotalInterests(mortgage);
+    const totalOtherCosts = this._calculateTotalOtherCosts(mortgage);
+    const totalCost = totalInterests + totalOtherCosts;
+    const initialAmount = mortgage.input.importoTotale;
+    return (totalCost / initialAmount) * 100;
   }
 
   private _calculateCostMultiplier(mortgage: MortgageData): number {
-    const totalInterests = this._calculateTotalInterests(mortgage)
-    const totalOtherCosts = this._calculateTotalOtherCosts(mortgage)
-    const totalCost = totalInterests + totalOtherCosts
-    const initialAmount = mortgage.input.importoTotale
-    return (initialAmount + totalCost) / initialAmount
+    const totalInterests = this._calculateTotalInterests(mortgage);
+    const totalOtherCosts = this._calculateTotalOtherCosts(mortgage);
+    const totalCost = totalInterests + totalOtherCosts;
+    const initialAmount = mortgage.input.importoTotale;
+    return (initialAmount + totalCost) / initialAmount;
   }
 
   private _formatCurrency(value: number): string {
@@ -100,7 +100,7 @@ export class MortgagesSummary extends LitElement {
       currency: 'EUR',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(value)
+    }).format(value);
   }
 
   private _getMonthName(mese: number): string {
@@ -117,17 +117,19 @@ export class MortgagesSummary extends LitElement {
       'ottobre',
       'novembre',
       'dicembre',
-    ]
-    return months[mese] || ''
+    ];
+    return months[mese] || '';
   }
 
   private _calculateEarlyClosure(mortgage: MortgageData): EarlyClosureData {
-    const input = mortgage.input
-    const hasSavings = input.risparmiMensiliForecast && input.risparmiMensiliForecast > 0
-    const hasDeductions = input.detrazioniInteressi || (input.detrazioneRistrutturazione && input.detrazioneRistrutturazione > 0)
+    const input = mortgage.input;
+    const hasSavings = input.risparmiMensiliForecast && input.risparmiMensiliForecast > 0;
+    const hasDeductions =
+      input.detrazioniInteressi ||
+      (input.detrazioneRistrutturazione && input.detrazioneRistrutturazione > 0);
 
     if (!hasSavings && !hasDeductions) {
-      return { isPossible: false }
+      return { isPossible: false };
     }
 
     return MortgageCalculator.calculateEarlyClosure(
@@ -135,22 +137,22 @@ export class MortgagesSummary extends LitElement {
       input.risparmiMensiliForecast || 0,
       input.detrazioniInteressi || false,
       input.detrazioneRistrutturazione || 0
-    )
+    );
   }
 
   private _calculateInterestSaved(mortgage: MortgageData, closure: EarlyClosureData): number {
     if (!closure.isPossible || !closure.meseChiusura) {
-      return 0
+      return 0;
     }
 
-    const totalInterest = this._calculateTotalInterests(mortgage)
-    const closureRow = mortgage.amortization[closure.meseChiusura - 1]
+    const totalInterest = this._calculateTotalInterests(mortgage);
+    const closureRow = mortgage.amortization[closure.meseChiusura - 1];
 
     if (!closureRow) {
-      return 0
+      return 0;
     }
 
-    return totalInterest - closureRow.totaleIntaressPagato
+    return totalInterest - closureRow.totaleIntaressPagato;
   }
 
   render() {
@@ -159,7 +161,7 @@ export class MortgagesSummary extends LitElement {
         <div class="no-mortgages">
           <p>Nessun mutuo simulato. Crea una nuova scheda per iniziare.</p>
         </div>
-      `
+      `;
     }
 
     return html`
@@ -201,17 +203,24 @@ export class MortgagesSummary extends LitElement {
                       </td>
                       <td class="early-closure-date">
                         ${(() => {
-                          const input = row.mortgage.input
-                          const hasSavings = input.risparmiMensiliForecast && input.risparmiMensiliForecast > 0
-                          const hasDeductions = input.detrazioniInteressi || (input.detrazioneRistrutturazione && input.detrazioneRistrutturazione > 0)
+                          const input = row.mortgage.input;
+                          const hasSavings =
+                            input.risparmiMensiliForecast && input.risparmiMensiliForecast > 0;
+                          const hasDeductions =
+                            input.detrazioniInteressi ||
+                            (input.detrazioneRistrutturazione &&
+                              input.detrazioneRistrutturazione > 0);
 
                           if (hasSavings || hasDeductions) {
-                            const closure = this._calculateEarlyClosure(row.mortgage)
+                            const closure = this._calculateEarlyClosure(row.mortgage);
                             return closure.isPossible
-                              ? html`<span class="closure-date-value">${this._getMonthName(closure.meseChiusura! % 12)} ${closure.annoChiusura}</span>`
-                              : html`<span class="closure-not-feasible">Non fattibile</span>`
+                              ? html`<span class="closure-date-value"
+                                  >${this._getMonthName(closure.meseChiusura! % 12)}
+                                  ${closure.annoChiusura}</span
+                                >`
+                              : html`<span class="closure-not-feasible">Non fattibile</span>`;
                           }
-                          return html`<span class="closure-not-planned">Non prevista</span>`
+                          return html`<span class="closure-not-planned">Non prevista</span>`;
                         })()}
                       </td>
                       <td class="currency highlight-interest">
@@ -255,7 +264,10 @@ export class MortgagesSummary extends LitElement {
                       <dd>${this._formatCurrency(row.mortgage.input.importoTotale)}</dd>
 
                       <dt>Durata:</dt>
-                      <dd>${row.mortgage.input.durataAnni} anni (${row.mortgage.input.durataAnni * 12} mesi)</dd>
+                      <dd>
+                        ${row.mortgage.input.durataAnni} anni (${row.mortgage.input.durataAnni * 12}
+                        mesi)
+                      </dd>
 
                       <dt>Tasso Interesse:</dt>
                       <dd>${row.mortgage.input.tassoInteresse.toFixed(2)}% annuale</dd>
@@ -295,57 +307,75 @@ export class MortgagesSummary extends LitElement {
                       </dd>
 
                       <dt>Totale Altre Spese:</dt>
-                      <dd class="highlight-costs">
-                        ${this._formatCurrency(row.totalOtherCosts)}
-                      </dd>
+                      <dd class="highlight-costs">${this._formatCurrency(row.totalOtherCosts)}</dd>
 
                       <dt>Costo Totale:</dt>
-                      <dd class="grand-total-value">
-                        ${this._formatCurrency(row.grandTotal)}
-                      </dd>
+                      <dd class="grand-total-value">${this._formatCurrency(row.grandTotal)}</dd>
                     </dl>
                   </div>
 
                   ${(() => {
-                    const input = row.mortgage.input
-                    const hasSavings = input.risparmiMensiliForecast && input.risparmiMensiliForecast > 0
-                    const hasDeductions = input.detrazioniInteressi || (input.detrazioneRistrutturazione && input.detrazioneRistrutturazione > 0)
+                    const input = row.mortgage.input;
+                    const hasSavings =
+                      input.risparmiMensiliForecast && input.risparmiMensiliForecast > 0;
+                    const hasDeductions =
+                      input.detrazioniInteressi ||
+                      (input.detrazioneRistrutturazione && input.detrazioneRistrutturazione > 0);
 
                     return hasSavings || hasDeductions
                       ? (() => {
-                          const closure = this._calculateEarlyClosure(row.mortgage)
-                          const interestSaved = this._calculateInterestSaved(row.mortgage, closure)
+                          const closure = this._calculateEarlyClosure(row.mortgage);
+                          const interestSaved = this._calculateInterestSaved(row.mortgage, closure);
                           return html`
                             <div class="detail-section early-closure-section">
                               <h4>Chiusura Anticipata</h4>
                               ${closure.isPossible
                                 ? html`
                                     <dl class="detail-list">
-                                      ${hasSavings ? html`<dt>Risparmi mensili:</dt><dd>${this._formatCurrency(input.risparmiMensiliForecast!)}</dd>` : ''}
-                                      ${input.detrazioniInteressi ? html`<dt>Detrazioni interessi:</dt><dd>19% annuale (max €760/anno)</dd>` : ''}
-                                      ${input.detrazioneRistrutturazione ? html`<dt>Detrazione ristrutturazione:</dt><dd>36% in 10 rate</dd>` : ''}
+                                      ${hasSavings
+                                        ? html`<dt>Risparmi mensili:</dt>
+                                            <dd>
+                                              ${this._formatCurrency(
+                                                input.risparmiMensiliForecast!
+                                              )}
+                                            </dd>`
+                                        : ''}
+                                      ${input.detrazioniInteressi
+                                        ? html`<dt>Detrazioni interessi:</dt>
+                                            <dd>19% annuale (max €760/anno)</dd>`
+                                        : ''}
+                                      ${input.detrazioneRistrutturazione
+                                        ? html`<dt>Detrazione ristrutturazione:</dt>
+                                            <dd>36% in 10 rate</dd>`
+                                        : ''}
                                       <dt class="closure-success">Data Chiusura:</dt>
-                                      <dd class="closure-success">${this._getMonthName(closure.meseChiusura! % 12)} ${closure.annoChiusura}</dd>
+                                      <dd class="closure-success">
+                                        ${this._getMonthName(closure.meseChiusura! % 12)}
+                                        ${closure.annoChiusura}
+                                      </dd>
                                       <dt>Mesi Risparmiati:</dt>
                                       <dd>${closure.mesiRisparmiati} mesi</dd>
                                       <dt class="interest-saved-label">Interessi Risparmiati:</dt>
-                                      <dd class="interest-saved">${this._formatCurrency(interestSaved)}</dd>
+                                      <dd class="interest-saved">
+                                        ${this._formatCurrency(interestSaved)}
+                                      </dd>
                                       <dt>Risparmi Accumulati:</dt>
                                       <dd>${this._formatCurrency(closure.risparmiAccumulati!)}</dd>
                                     </dl>
                                   `
                                 : html`
                                     <p class="closure-not-possible">
-                                      ${hasSavings ? `I risparmi mensili di ${this._formatCurrency(input.risparmiMensiliForecast!)} ` : ''}
-                                      ${hasDeductions ? `e le detrazioni ` : ''}
-                                      non sono sufficienti per chiudere il mutuo anticipatamente.
+                                      ${hasSavings
+                                        ? `I risparmi mensili di ${this._formatCurrency(input.risparmiMensiliForecast!)} `
+                                        : ''}
+                                      ${hasDeductions ? `e le detrazioni ` : ''} non sono
+                                      sufficienti per chiudere il mutuo anticipatamente.
                                     </p>
-                                  `
-                              }
+                                  `}
                             </div>
-                          `
+                          `;
                         })()
-                      : ''
+                      : '';
                   })()}
                 </div>
               </div>
@@ -353,7 +383,7 @@ export class MortgagesSummary extends LitElement {
           )}
         </div>
       </div>
-    `
+    `;
   }
 
   static styles = css`
@@ -600,7 +630,11 @@ export class MortgagesSummary extends LitElement {
     }
 
     .early-closure-section {
-      background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(59, 130, 246, 0.02) 100%) !important;
+      background: linear-gradient(
+        135deg,
+        rgba(59, 130, 246, 0.05) 0%,
+        rgba(59, 130, 246, 0.02) 100%
+      ) !important;
       border: 2px solid var(--primary) !important;
       border-left: 4px solid var(--primary) !important;
     }
@@ -683,11 +717,11 @@ export class MortgagesSummary extends LitElement {
         grid-template-columns: 1fr;
       }
     }
-  `
+  `;
 }
 
 declare global {
   interface HTMLElementTagNameMap {
-    'mortgages-summary': MortgagesSummary
+    'mortgages-summary': MortgagesSummary;
   }
 }

@@ -1,56 +1,56 @@
-import { LitElement, css, html } from 'lit'
-import { customElement, property } from 'lit/decorators.js'
-import type { AmortizationRow } from '../types.js'
-import { MortgageCalculator } from '../utils/mortgage-calculator.js'
+import { LitElement, css, html } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
+import type { AmortizationRow } from '../types.js';
+import { MortgageCalculator } from '../utils/mortgage-calculator.js';
 
 @customElement('amortization-table')
 export class AmortizationTable extends LitElement {
   @property({ type: Array })
-  rows: AmortizationRow[] = []
+  rows: AmortizationRow[] = [];
 
-  private currentPage: number = 0
-  private pageSize: number = 12 // Show 12 months per page
+  private currentPage: number = 0;
+  private pageSize: number = 12; // Show 12 months per page
 
   private handlePreviousPage(): void {
     if (this.currentPage > 0) {
-      this.currentPage--
+      this.currentPage--;
     }
   }
 
   private handleNextPage(): void {
-    const maxPage = Math.ceil(this.rows.length / this.pageSize) - 1
+    const maxPage = Math.ceil(this.rows.length / this.pageSize) - 1;
     if (this.currentPage < maxPage) {
-      this.currentPage++
+      this.currentPage++;
     }
   }
 
   private get displayedRows(): AmortizationRow[] {
-    const start = this.currentPage * this.pageSize
-    const end = start + this.pageSize
-    return this.rows.slice(start, end)
+    const start = this.currentPage * this.pageSize;
+    const end = start + this.pageSize;
+    return this.rows.slice(start, end);
   }
 
   private get totalPages(): number {
-    return Math.ceil(this.rows.length / this.pageSize)
+    return Math.ceil(this.rows.length / this.pageSize);
   }
 
   private get currentPageNumber(): number {
-    return this.currentPage + 1
+    return this.currentPage + 1;
   }
 
   private get hasSavingsData(): boolean {
-    return this.rows.some((row) => row.risparmiAccumulati !== undefined)
+    return this.rows.some((row) => row.risparmiAccumulati !== undefined);
   }
 
   render() {
     if (this.rows.length === 0) {
-      return html`<p class="no-data">Nessun dato disponibile</p>`
+      return html`<p class="no-data">Nessun dato disponibile</p>`;
     }
 
     // Calculate totals
-    const lastRow = this.rows[this.rows.length - 1]
-    const totalInterest = lastRow.totaleIntaressPagato
-    const totalPrincipal = lastRow.totalePrincipalPagato
+    const lastRow = this.rows[this.rows.length - 1];
+    const totalInterest = lastRow.totaleIntaressPagato;
+    const totalPrincipal = lastRow.totalePrincipalPagato;
 
     return html`
       <div class="table-container">
@@ -87,12 +87,24 @@ export class AmortizationTable extends LitElement {
               (row, idx) => html`
                 <tr class="${idx % 2 === 0 ? 'even' : 'odd'}">
                   <td class="row-numero">${row.anno}/${String(row.mese + 1).padStart(2, '0')}</td>
-                  <td class="row-currency">${MortgageCalculator.formatCurrency(row.quotaInteressi)}</td>
-                  <td class="row-currency">${MortgageCalculator.formatCurrency(row.quotaCapitale)}</td>
-                  <td class="row-currency">${MortgageCalculator.formatCurrency(row.totaleRataMensile)}</td>
-                  <td class="row-currency">${MortgageCalculator.formatCurrency(row.totaleIntaressPagato)}</td>
-                  <td class="row-currency">${MortgageCalculator.formatCurrency(row.totalePrincipalPagato)}</td>
-                  <td class="row-currency">${MortgageCalculator.formatCurrency(row.capitaleRimanente)}</td>
+                  <td class="row-currency">
+                    ${MortgageCalculator.formatCurrency(row.quotaInteressi)}
+                  </td>
+                  <td class="row-currency">
+                    ${MortgageCalculator.formatCurrency(row.quotaCapitale)}
+                  </td>
+                  <td class="row-currency">
+                    ${MortgageCalculator.formatCurrency(row.totaleRataMensile)}
+                  </td>
+                  <td class="row-currency">
+                    ${MortgageCalculator.formatCurrency(row.totaleIntaressPagato)}
+                  </td>
+                  <td class="row-currency">
+                    ${MortgageCalculator.formatCurrency(row.totalePrincipalPagato)}
+                  </td>
+                  <td class="row-currency">
+                    ${MortgageCalculator.formatCurrency(row.capitaleRimanente)}
+                  </td>
                   ${this.hasSavingsData
                     ? html`<td class="row-currency">
                         ${row.risparmiAccumulati !== undefined
@@ -134,7 +146,7 @@ export class AmortizationTable extends LitElement {
           <button class="export-btn" @click=${this.exportToCSV}>📥 Scarica CSV</button>
         </div>
       </div>
-    `
+    `;
   }
 
   private exportToCSV(): void {
@@ -146,10 +158,10 @@ export class AmortizationTable extends LitElement {
       'Tot. Interessi',
       'Tot. Capitale',
       'Capitale Rimanente',
-    ]
+    ];
 
     if (this.hasSavingsData) {
-      headers.push('Risparmi Accumulati')
+      headers.push('Risparmi Accumulati');
     }
 
     const rows = this.rows.map((row) => {
@@ -161,30 +173,31 @@ export class AmortizationTable extends LitElement {
         row.totaleIntaressPagato.toFixed(2),
         row.totalePrincipalPagato.toFixed(2),
         row.capitaleRimanente.toFixed(2),
-      ]
+      ];
 
       if (this.hasSavingsData) {
-        rowData.push(
-          row.risparmiAccumulati !== undefined ? row.risparmiAccumulati.toFixed(2) : ''
-        )
+        rowData.push(row.risparmiAccumulati !== undefined ? row.risparmiAccumulati.toFixed(2) : '');
       }
 
-      return rowData
-    })
+      return rowData;
+    });
 
-    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(','))
+    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(','));
 
-    const blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
+    const blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
 
-    link.setAttribute('href', url)
-    link.setAttribute('download', `piano_ammortamento_${new Date().toISOString().split('T')[0]}.csv`)
-    link.style.visibility = 'hidden'
+    link.setAttribute('href', url);
+    link.setAttribute(
+      'download',
+      `piano_ammortamento_${new Date().toISOString().split('T')[0]}.csv`
+    );
+    link.style.visibility = 'hidden';
 
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   static styles = css`
@@ -356,11 +369,11 @@ export class AmortizationTable extends LitElement {
         width: 100%;
       }
     }
-  `
+  `;
 }
 
 declare global {
   interface HTMLElementTagNameMap {
-    'amortization-table': AmortizationTable
+    'amortization-table': AmortizationTable;
   }
 }

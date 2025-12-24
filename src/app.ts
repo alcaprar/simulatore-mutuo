@@ -1,8 +1,13 @@
-import { LitElement, css, html } from 'lit'
-import { customElement, state } from 'lit/decorators.js'
-import type { AppTab } from './types.js'
-import './components/mortgage-tab.js'
-import './components/mortgages-summary.js'
+import { LitElement, css, html } from 'lit';
+import { customElement, state } from 'lit/decorators.js';
+import type { AppTab } from './types.js';
+import './components/mortgage-tab.js';
+import './components/mortgages-summary.js';
+
+interface AppStorageData {
+  tabs: AppTab[];
+  mortgages: Record<string, unknown>;
+}
 
 @customElement('mutuo-app')
 export class MutuoApp extends LitElement {
@@ -10,71 +15,99 @@ export class MutuoApp extends LitElement {
   private tabs: AppTab[] = [
     { id: 'impostazioni', name: 'Impostazioni', isFixed: true },
     { id: 'resoconto', name: 'Resoconto', isFixed: true },
-    { id: 'debug', name: 'Debug', isFixed: true },
-  ]
+  ];
 
   @state()
-  private activeTabId: string = 'impostazioni'
+  private activeTabId: string = 'impostazioni';
 
   @state()
-  private showAddTabDialog: boolean = false
+  private showAddTabDialog: boolean = false;
 
   @state()
-  private newTabName: string = ''
+  private newTabName: string = '';
 
   @state()
-  private editingTabId: string | null = null
+  private editingTabId: string | null = null;
 
   @state()
-  private editingTabName: string = ''
+  private editingTabName: string = '';
 
-  private boundHandleRouteChange = () => this.handleRouteChange()
+  @state()
+  private showDebug: boolean = false;
+
+  private boundHandleRouteChange = () => this.handleRouteChange();
 
   connectedCallback() {
-    super.connectedCallback()
-    this.loadTabsFromStorage()
-    window.addEventListener('hashchange', this.boundHandleRouteChange)
-    this.handleRouteChange()
+    super.connectedCallback();
+    this.loadTabsFromStorage();
+    window.addEventListener('hashchange', this.boundHandleRouteChange);
+    this.handleRouteChange();
   }
 
   disconnectedCallback() {
-    super.disconnectedCallback()
-    window.removeEventListener('hashchange', this.boundHandleRouteChange)
+    super.disconnectedCallback();
+    window.removeEventListener('hashchange', this.boundHandleRouteChange);
   }
 
   private loadTabsFromStorage(): void {
-    const storedTabs = localStorage.getItem('mutuo-tabs')
-    if (storedTabs) {
+    const appData = this.loadAppData();
+    if (appData.tabs && Array.isArray(appData.tabs)) {
       try {
-        this.tabs = JSON.parse(storedTabs)
+        // Keep fixed tabs and add stored custom tabs
+        const fixedTabs = [
+          { id: 'impostazioni', name: 'Impostazioni', isFixed: true },
+          { id: 'resoconto', name: 'Resoconto', isFixed: true },
+        ];
+        const customTabs = appData.tabs.filter((t: AppTab) => !t.isFixed);
+        this.tabs = [...fixedTabs, ...customTabs];
       } catch (e) {
-        console.error('Failed to load tabs from storage:', e)
+        console.error('Failed to load tabs from storage:', e);
       }
     }
   }
 
   private saveTabsToStorage(): void {
-    localStorage.setItem('mutuo-tabs', JSON.stringify(this.tabs))
+    const appData = this.loadAppData();
+    appData.tabs = this.tabs;
+    this.saveAppData(appData);
+  }
+
+  private loadAppData(): AppStorageData {
+    const stored = localStorage.getItem('simulatore-mutuo');
+    if (!stored) {
+      return { tabs: [], mortgages: {} };
+    }
+
+    try {
+      return JSON.parse(stored);
+    } catch (e) {
+      console.error('Failed to load app data:', e);
+      return { tabs: [], mortgages: {} };
+    }
+  }
+
+  private saveAppData(data: AppStorageData): void {
+    localStorage.setItem('simulatore-mutuo', JSON.stringify(data));
   }
 
   private switchTab(tabId: string): void {
-    window.location.hash = tabId
+    window.location.hash = tabId;
   }
 
   private handleRouteChange(): void {
-    const hash = window.location.hash.slice(1) || ''
+    const hash = window.location.hash.slice(1) || '';
 
     if (hash) {
       // Check if tab exists
       if (this.tabs.some((t) => t.id === hash)) {
-        this.activeTabId = hash
+        this.activeTabId = hash;
       } else {
         // Tab doesn't exist, go to first tab
-        window.location.hash = this.tabs[0].id
+        window.location.hash = this.tabs[0].id;
       }
     } else {
       // No hash, set to first tab
-      window.location.hash = this.tabs[0].id
+      window.location.hash = this.tabs[0].id;
     }
   }
 
@@ -84,31 +117,31 @@ export class MutuoApp extends LitElement {
       .toLowerCase()
       .trim()
       .replace(/\s+/g, '-') // Replace spaces with hyphens
-      .replace(/[^\w\-]/g, '') // Remove non-word characters except hyphens
-      .replace(/\-+/g, '-') // Replace multiple hyphens with single hyphen
-      .replace(/^\-+|\-+$/g, '') // Remove leading/trailing hyphens
+      .replace(/[^\w-]/g, '') // Remove non-word characters except hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+      .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
   }
 
   private openAddTabDialog(): void {
-    this.showAddTabDialog = true
-    this.newTabName = ''
+    this.showAddTabDialog = true;
+    this.newTabName = '';
   }
 
   private closeAddTabDialog(): void {
-    this.showAddTabDialog = false
-    this.newTabName = ''
+    this.showAddTabDialog = false;
+    this.newTabName = '';
   }
 
   private addNewTab(): void {
     if (this.newTabName.trim()) {
-      let newId = this.generateTabId(this.newTabName)
+      let newId = this.generateTabId(this.newTabName);
 
       // Ensure unique ID by appending a number if needed
-      let counter = 1
-      const baseId = newId
+      let counter = 1;
+      const baseId = newId;
       while (this.tabs.some((t) => t.id === newId)) {
-        newId = `${baseId}-${counter}`
-        counter++
+        newId = `${baseId}-${counter}`;
+        counter++;
       }
 
       this.tabs = [
@@ -118,102 +151,99 @@ export class MutuoApp extends LitElement {
           name: this.newTabName.trim(),
           isFixed: false,
         },
-      ]
-      this.saveTabsToStorage()
-      this.switchTab(newId)
-      this.closeAddTabDialog()
+      ];
+      this.saveTabsToStorage();
+      this.switchTab(newId);
+      this.closeAddTabDialog();
     }
   }
 
   private deleteTab(tabId: string): void {
-    const tabToDelete = this.tabs.find((t) => t.id === tabId)
+    const tabToDelete = this.tabs.find((t) => t.id === tabId);
     if (tabToDelete?.isFixed) {
-      return // Cannot delete fixed tabs
+      return; // Cannot delete fixed tabs
     }
 
-    this.tabs = this.tabs.filter((t) => t.id !== tabId)
-    this.saveTabsToStorage()
+    this.tabs = this.tabs.filter((t) => t.id !== tabId);
+    this.saveTabsToStorage();
 
     // Switch to another tab if the active tab was deleted
     if (this.activeTabId === tabId) {
-      this.switchTab(this.tabs[0].id)
+      this.switchTab(this.tabs[0].id);
     }
   }
 
   private handleKeyDown(event: KeyboardEvent): void {
     if (event.key === 'Enter') {
       if (this.editingTabId) {
-        this.saveTabNameEdit()
+        this.saveTabNameEdit();
       } else {
-        this.addNewTab()
+        this.addNewTab();
       }
     } else if (event.key === 'Escape') {
       if (this.editingTabId) {
-        this.closeTabNameEdit()
+        this.closeTabNameEdit();
       } else {
-        this.closeAddTabDialog()
+        this.closeAddTabDialog();
       }
     }
   }
 
   private openTabNameEdit(tabId: string, currentName: string): void {
-    this.editingTabId = tabId
-    this.editingTabName = currentName
+    this.editingTabId = tabId;
+    this.editingTabName = currentName;
   }
 
   private closeTabNameEdit(): void {
-    this.editingTabId = null
-    this.editingTabName = ''
+    this.editingTabId = null;
+    this.editingTabName = '';
   }
 
   private saveTabNameEdit(): void {
     if (!this.editingTabId || !this.editingTabName.trim()) {
-      return
+      return;
     }
 
     // Update the tab name
-    const tabIndex = this.tabs.findIndex((t) => t.id === this.editingTabId)
+    const tabIndex = this.tabs.findIndex((t) => t.id === this.editingTabId);
     if (tabIndex >= 0) {
-      this.tabs[tabIndex].name = this.editingTabName.trim()
-      this.tabs = [...this.tabs] // Trigger reactivity
-      this.saveTabsToStorage()
+      this.tabs[tabIndex].name = this.editingTabName.trim();
+      this.tabs = [...this.tabs]; // Trigger reactivity
+      this.saveTabsToStorage();
     }
 
-    this.closeTabNameEdit()
+    this.closeTabNameEdit();
   }
 
   private getLocalStorageData(): Record<string, unknown> {
-    const data: Record<string, unknown> = {}
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      if (key) {
-        const value = localStorage.getItem(key)
-        try {
-          data[key] = value ? JSON.parse(value) : value
-        } catch {
-          data[key] = value
-        }
-      }
+    const stored = localStorage.getItem('simulatore-mutuo');
+    if (!stored) {
+      return {};
     }
-    return data
+
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return { raw: stored };
+    }
   }
 
   private clearAllLocalStorage(): void {
-    if (confirm('Are you sure you want to clear all localStorage? This cannot be undone.')) {
-      localStorage.clear()
+    if (confirm('Are you sure you want to clear all app data? This cannot be undone.')) {
+      localStorage.removeItem('simulatore-mutuo');
       // Reload to reset the app
-      window.location.reload()
+      window.location.reload();
     }
   }
 
   private copyToClipboard(text: string): void {
     navigator.clipboard.writeText(text).then(() => {
-      alert('Copied to clipboard!')
-    })
+      alert('Copied to clipboard!');
+    });
   }
 
   render() {
-    const activeTab = this.tabs.find((t) => t.id === this.activeTabId)
+    const activeTab = this.tabs.find((t) => t.id === this.activeTabId);
 
     return html`
       <div class="app-wrapper">
@@ -234,7 +264,7 @@ export class MutuoApp extends LitElement {
                             class="tab-edit-input"
                             .value=${this.editingTabName}
                             @input=${(e: Event) => {
-                              this.editingTabName = (e.target as HTMLInputElement).value
+                              this.editingTabName = (e.target as HTMLInputElement).value;
                             }}
                             @keydown=${this.handleKeyDown}
                             autofocus
@@ -266,8 +296,8 @@ export class MutuoApp extends LitElement {
                                 <button
                                   class="tab-edit-btn"
                                   @click=${(e: Event) => {
-                                    e.stopPropagation()
-                                    this.openTabNameEdit(tab.id, tab.name)
+                                    e.stopPropagation();
+                                    this.openTabNameEdit(tab.id, tab.name);
                                   }}
                                   title="Edit tab name"
                                 >
@@ -276,8 +306,8 @@ export class MutuoApp extends LitElement {
                                 <button
                                   class="tab-close-btn"
                                   @click=${(e: Event) => {
-                                    e.stopPropagation()
-                                    this.deleteTab(tab.id)
+                                    e.stopPropagation();
+                                    this.deleteTab(tab.id);
                                   }}
                                   title="Delete tab"
                                 >
@@ -296,56 +326,85 @@ export class MutuoApp extends LitElement {
 
             <div class="tabs-content">
               ${activeTab
-                ? activeTab.id === 'debug'
+                ? activeTab.id === 'impostazioni'
                   ? html`
-                      <div class="tab-panel debug-panel">
-                        <div class="debug-header">
-                          <h3>LocalStorage Contents</h3>
-                          <div class="debug-actions">
-                            <button
-                              class="btn-secondary"
-                              @click=${() => this.copyToClipboard(JSON.stringify(this.getLocalStorageData(), null, 2))}
-                              title="Copy JSON to clipboard"
-                            >
-                              📋 Copy
-                            </button>
-                            <button
-                              class="btn-danger"
-                              @click=${this.clearAllLocalStorage}
-                              title="Clear all localStorage"
-                            >
-                              🗑️ Clear All
-                            </button>
-                          </div>
+                      <div class="tab-panel">
+                        <h2>Impostazioni</h2>
+                        <div class="settings-section">
+                          <button
+                            class="debug-toggle-btn"
+                            @click=${() => {
+                              this.showDebug = !this.showDebug;
+                            }}
+                          >
+                            ${this.showDebug ? '🔽' : '▶️'} Debug
+                          </button>
                         </div>
-                        <div class="json-display">
-                          <pre>${JSON.stringify(this.getLocalStorageData(), null, 2)}</pre>
-                        </div>
+                        ${this.showDebug
+                          ? html`
+                              <div class="debug-section">
+                                <div class="debug-header">
+                                  <h3>LocalStorage Contents</h3>
+                                  <div class="debug-actions">
+                                    <button
+                                      class="btn-secondary"
+                                      @click=${() =>
+                                        this.copyToClipboard(
+                                          JSON.stringify(this.getLocalStorageData(), null, 2)
+                                        )}
+                                      title="Copy JSON to clipboard"
+                                    >
+                                      📋 Copy
+                                    </button>
+                                    <button
+                                      class="btn-danger"
+                                      @click=${this.clearAllLocalStorage}
+                                      title="Clear all localStorage"
+                                    >
+                                      🗑️ Clear All
+                                    </button>
+                                  </div>
+                                </div>
+                                <div class="json-display">
+                                  <pre>${JSON.stringify(this.getLocalStorageData(), null, 2)}</pre>
+                                </div>
+                              </div>
+                            `
+                          : ''}
                       </div>
                     `
-                  : activeTab.id === 'impostazioni'
-                    ? html`
-                        <div class="tab-panel">
-                          <p class="placeholder">
-                            Scheda per configurare le impostazioni generali dell'app
-                          </p>
-                        </div>
+                  : activeTab.id === 'resoconto'
+                    ? html` <mortgages-summary .tabs=${this.tabs}></mortgages-summary> `
+                    : html`
+                        <mortgage-tab
+                          .tabId=${activeTab.id}
+                          .tabName=${activeTab.name}
+                        ></mortgage-tab>
                       `
-                    : activeTab.id === 'resoconto'
-                      ? html`
-                          <mortgages-summary .tabs=${this.tabs}></mortgages-summary>
-                        `
-                      : html`
-                          <mortgage-tab
-                            .tabId=${activeTab.id}
-                            .tabName=${activeTab.name}
-                          ></mortgage-tab>
-                        `
                 : html`<div class="tab-panel"><p>No tabs available</p></div>`}
             </div>
           </div>
         </div>
       </div>
+
+      <!-- Disclaimer Banner -->
+      <div class="disclaimer-banner">
+        ⚠️ <strong>Avvertenza:</strong> Questo strumento può fare errori. L'autore non è
+        responsabile per eventuali rischi, perdite o errori che possono derivare dal suo utilizzo.
+        Si prega di verificare indipendentemente tutti i calcoli prima di prendere decisioni
+        finanziarie.
+      </div>
+
+      <!-- Footer -->
+      <footer class="app-footer">
+        <a
+          href="https://github.com/alcaprar/simulatore-mutuo"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          📄 Repository
+        </a>
+      </footer>
 
       <!-- Add Tab Dialog -->
       ${this.showAddTabDialog
@@ -363,7 +422,7 @@ export class MutuoApp extends LitElement {
                     placeholder="Nome della scheda"
                     .value=${this.newTabName}
                     @input=${(e: Event) => {
-                      this.newTabName = (e.target as HTMLInputElement).value
+                      this.newTabName = (e.target as HTMLInputElement).value;
                     }}
                     @keydown=${this.handleKeyDown}
                     autofocus
@@ -383,7 +442,7 @@ export class MutuoApp extends LitElement {
             </div>
           `
         : ''}
-    `
+    `;
   }
 
   static styles = css`
@@ -788,6 +847,66 @@ export class MutuoApp extends LitElement {
       line-height: 1.6;
     }
 
+    .settings-section {
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid var(--gray-200);
+    }
+
+    .debug-toggle-btn {
+      padding: 0.75rem 1rem;
+      background: var(--gray-100);
+      border: 2px solid var(--gray-300);
+      border-radius: 0.5rem;
+      color: var(--gray-900);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.95rem;
+    }
+
+    .debug-toggle-btn:hover {
+      background: var(--gray-200);
+      border-color: var(--gray-400);
+    }
+
+    .debug-section {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: var(--gray-50);
+      border-radius: 0.5rem;
+      border: 2px solid var(--gray-200);
+    }
+
+    .disclaimer-banner {
+      padding: 1rem 1.5rem;
+      margin: 0 0 1rem 0;
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      color: #92400e;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .app-footer {
+      padding: 1.5rem;
+      text-align: center;
+      border-top: 1px solid var(--gray-200);
+      margin-top: 2rem;
+    }
+
+    .app-footer a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .app-footer a:hover {
+      color: #1d4ed8;
+      text-decoration: underline;
+    }
+
     @media (max-width: 640px) {
       .container {
         padding: 0.75rem;
@@ -810,12 +929,23 @@ export class MutuoApp extends LitElement {
       .modal {
         width: 95%;
       }
+
+      .disclaimer-banner {
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+        margin: 0 0 0.75rem 0;
+      }
+
+      .app-footer {
+        padding: 1rem;
+        margin-top: 1.5rem;
+      }
     }
-  `
+  `;
 }
 
 declare global {
   interface HTMLElementTagNameMap {
-    'mutuo-app': MutuoApp
+    'mutuo-app': MutuoApp;
   }
 }

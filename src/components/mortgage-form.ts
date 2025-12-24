@@ -1,67 +1,69 @@
-import { LitElement, css, html } from 'lit'
-import { customElement, property, state } from 'lit/decorators.js'
-import type { MortgageInput } from '../types.js'
+import { LitElement, css, html } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import type { MortgageInput } from '../types.js';
 
 @customElement('mortgage-form')
 export class MortgageForm extends LitElement {
   @property({ type: Object })
-  initialInput?: MortgageInput
+  initialInput?: MortgageInput;
 
   @state()
-  private importoTotale: number = 250000
+  private importoTotale: number = 250000;
 
   @state()
-  private mesePartenza: number = new Date().getMonth()
+  private mesePartenza: number = new Date().getMonth();
 
   @state()
-  private annoPartenza: number = new Date().getFullYear()
+  private annoPartenza: number = new Date().getFullYear();
 
   @state()
-  private durataAnni: number = 20
+  private durataAnni: number = 20;
 
   @state()
-  private tassoInteresse: number = 4.5
+  private tassoInteresse: number = 4.5;
 
   @state()
-  private speseIstruttoriaTipo: 'percentage' | 'fixed' = 'percentage'
+  private speseIstruttoriaTipo: 'percentage' | 'fixed' = 'percentage';
 
   @state()
-  private speseIstruttoriaValore: number = 1.0
+  private speseIstruttoriaValore: number = 1.0;
 
   @state()
-  private speseIncassoRata: number = 0
+  private speseIncassoRata: number = 0;
 
   @state()
-  private spesaPerizia: number = 600
+  private spesaPerizia: number = 600;
 
   @state()
-  private risparmiMensiliForecast: number = 0
+  private risparmiMensiliForecast: number = 0;
 
   @state()
-  private detrazioneRistrutturazione: number = 0
+  private detrazioneRistrutturazione: number = 0;
 
   @state()
-  private detrazioniInteressi: boolean = false
+  private detrazioniInteressi: boolean = false;
 
-  private lastInputId?: string
-  private isInitialized: boolean = false
+  private lastInputId?: string;
+  private isInitialized: boolean = false;
 
   connectedCallback() {
-    super.connectedCallback()
+    super.connectedCallback();
     // Ensure form is initialized with correct data when component is created
     if (!this.isInitialized) {
-      this.isInitialized = true
-      this.loadInitialData()
+      this.isInitialized = true;
+      this.loadInitialData();
     }
   }
 
   updated(changedProperties: Map<string, unknown>) {
     if (changedProperties.has('initialInput')) {
       // Reload when initialInput changes, including when it becomes undefined
-      const currentInputId = this.initialInput ? `${JSON.stringify(this.initialInput)}` : 'undefined'
+      const currentInputId = this.initialInput
+        ? `${JSON.stringify(this.initialInput)}`
+        : 'undefined';
       if (this.lastInputId !== currentInputId) {
-        this.lastInputId = currentInputId
-        this.loadInitialData()
+        this.lastInputId = currentInputId;
+        this.loadInitialData();
       }
     }
   }
@@ -69,32 +71,32 @@ export class MortgageForm extends LitElement {
   private loadInitialData(): void {
     if (this.initialInput) {
       // Load from existing data
-      this.importoTotale = this.initialInput.importoTotale
-      this.mesePartenza = this.initialInput.mesePartenza
-      this.annoPartenza = this.initialInput.annoPartenza
-      this.durataAnni = this.initialInput.durataAnni
-      this.tassoInteresse = this.initialInput.tassoInteresse
-      this.speseIstruttoriaTipo = this.initialInput.speseIstruttoria.tipo
-      this.speseIstruttoriaValore = this.initialInput.speseIstruttoria.valore
-      this.speseIncassoRata = this.initialInput.speseIncassoRata
-      this.spesaPerizia = this.initialInput.spesaPerizia
-      this.risparmiMensiliForecast = this.initialInput.risparmiMensiliForecast || 0
-      this.detrazioneRistrutturazione = this.initialInput.detrazioneRistrutturazione || 0
-      this.detrazioniInteressi = this.initialInput.detrazioniInteressi || false
+      this.importoTotale = this.initialInput.importoTotale;
+      this.mesePartenza = this.initialInput.mesePartenza;
+      this.annoPartenza = this.initialInput.annoPartenza;
+      this.durataAnni = this.initialInput.durataAnni;
+      this.tassoInteresse = this.initialInput.tassoInteresse;
+      this.speseIstruttoriaTipo = this.initialInput.speseIstruttoria.tipo;
+      this.speseIstruttoriaValore = this.initialInput.speseIstruttoria.valore;
+      this.speseIncassoRata = this.initialInput.speseIncassoRata;
+      this.spesaPerizia = this.initialInput.spesaPerizia;
+      this.risparmiMensiliForecast = this.initialInput.risparmiMensiliForecast || 0;
+      this.detrazioneRistrutturazione = this.initialInput.detrazioneRistrutturazione || 0;
+      this.detrazioniInteressi = this.initialInput.detrazioniInteressi || false;
     } else {
       // Reset to defaults when no initial input
-      this.importoTotale = 250000
-      this.mesePartenza = new Date().getMonth()
-      this.annoPartenza = new Date().getFullYear()
-      this.durataAnni = 20
-      this.tassoInteresse = 4.5
-      this.speseIstruttoriaTipo = 'percentage'
-      this.speseIstruttoriaValore = 1.0
-      this.speseIncassoRata = 0
-      this.spesaPerizia = 600
-      this.risparmiMensiliForecast = 0
-      this.detrazioneRistrutturazione = 0
-      this.detrazioniInteressi = false
+      this.importoTotale = 250000;
+      this.mesePartenza = new Date().getMonth();
+      this.annoPartenza = new Date().getFullYear();
+      this.durataAnni = 20;
+      this.tassoInteresse = 4.5;
+      this.speseIstruttoriaTipo = 'percentage';
+      this.speseIstruttoriaValore = 1.0;
+      this.speseIncassoRata = 0;
+      this.spesaPerizia = 600;
+      this.risparmiMensiliForecast = 0;
+      this.detrazioneRistrutturazione = 0;
+      this.detrazioniInteressi = false;
     }
   }
 
@@ -111,7 +113,7 @@ export class MortgageForm extends LitElement {
     'Ottobre',
     'Novembre',
     'Dicembre',
-  ]
+  ];
 
   private handleSubmit(): void {
     const input: MortgageInput = {
@@ -129,7 +131,7 @@ export class MortgageForm extends LitElement {
       risparmiMensiliForecast: this.risparmiMensiliForecast || undefined,
       detrazioneRistrutturazione: this.detrazioneRistrutturazione || undefined,
       detrazioniInteressi: this.detrazioniInteressi || undefined,
-    }
+    };
 
     this.dispatchEvent(
       new CustomEvent('mortgage-calculated', {
@@ -137,27 +139,32 @@ export class MortgageForm extends LitElement {
         bubbles: true,
         composed: true,
       })
-    )
+    );
   }
 
   private resetForm(): void {
-    this.importoTotale = 250000
-    this.mesePartenza = new Date().getMonth()
-    this.annoPartenza = new Date().getFullYear()
-    this.durataAnni = 20
-    this.tassoInteresse = 4.5
-    this.speseIstruttoriaTipo = 'percentage'
-    this.speseIstruttoriaValore = 1.0
-    this.speseIncassoRata = 0
-    this.spesaPerizia = 600
-    this.risparmiMensiliForecast = 0
-    this.detrazioneRistrutturazione = 0
-    this.detrazioniInteressi = false
+    this.importoTotale = 250000;
+    this.mesePartenza = new Date().getMonth();
+    this.annoPartenza = new Date().getFullYear();
+    this.durataAnni = 20;
+    this.tassoInteresse = 4.5;
+    this.speseIstruttoriaTipo = 'percentage';
+    this.speseIstruttoriaValore = 1.0;
+    this.speseIncassoRata = 0;
+    this.spesaPerizia = 600;
+    this.risparmiMensiliForecast = 0;
+    this.detrazioneRistrutturazione = 0;
+    this.detrazioniInteressi = false;
   }
 
   render() {
     return html`
-      <form @submit=${(e: Event) => { e.preventDefault(); this.handleSubmit() }}>
+      <form
+        @submit=${(e: Event) => {
+          e.preventDefault();
+          this.handleSubmit();
+        }}
+      >
         <div class="form-section">
           <h3>Dati Principali</h3>
 
@@ -171,7 +178,7 @@ export class MortgageForm extends LitElement {
               step="1000"
               .value=${this.importoTotale}
               @input=${(e: Event) => {
-                this.importoTotale = parseFloat((e.target as HTMLInputElement).value)
+                this.importoTotale = parseFloat((e.target as HTMLInputElement).value);
               }}
             />
           </div>
@@ -183,7 +190,7 @@ export class MortgageForm extends LitElement {
                 id="mese"
                 .value=${this.mesePartenza.toString()}
                 @change=${(e: Event) => {
-                  this.mesePartenza = parseInt((e.target as HTMLSelectElement).value)
+                  this.mesePartenza = parseInt((e.target as HTMLSelectElement).value);
                 }}
               >
                 ${this.months.map((m, i) => html`<option value="${i}">${m}</option>`)}
@@ -199,7 +206,7 @@ export class MortgageForm extends LitElement {
                 max="2100"
                 .value=${this.annoPartenza}
                 @input=${(e: Event) => {
-                  this.annoPartenza = parseInt((e.target as HTMLInputElement).value)
+                  this.annoPartenza = parseInt((e.target as HTMLInputElement).value);
                 }}
               />
             </div>
@@ -215,7 +222,7 @@ export class MortgageForm extends LitElement {
               step="1"
               .value=${this.durataAnni}
               @input=${(e: Event) => {
-                this.durataAnni = parseInt((e.target as HTMLInputElement).value)
+                this.durataAnni = parseInt((e.target as HTMLInputElement).value);
               }}
             />
             <small class="form-hint">${this.durataAnni * 12} mesi</small>
@@ -231,7 +238,7 @@ export class MortgageForm extends LitElement {
               step="0.01"
               .value=${this.tassoInteresse}
               @input=${(e: Event) => {
-                this.tassoInteresse = parseFloat((e.target as HTMLInputElement).value)
+                this.tassoInteresse = parseFloat((e.target as HTMLInputElement).value);
               }}
             />
           </div>
@@ -246,8 +253,9 @@ export class MortgageForm extends LitElement {
               <select
                 .value=${this.speseIstruttoriaTipo}
                 @change=${(e: Event) => {
-                  this.speseIstruttoriaTipo = (e.target as HTMLSelectElement)
-                    .value as 'percentage' | 'fixed'
+                  this.speseIstruttoriaTipo = (e.target as HTMLSelectElement).value as
+                    | 'percentage'
+                    | 'fixed';
                 }}
               >
                 <option value="percentage">% dell'importo</option>
@@ -259,7 +267,7 @@ export class MortgageForm extends LitElement {
                 step="${this.speseIstruttoriaTipo === 'percentage' ? '0.01' : '1'}"
                 .value=${this.speseIstruttoriaValore}
                 @input=${(e: Event) => {
-                  this.speseIstruttoriaValore = parseFloat((e.target as HTMLInputElement).value)
+                  this.speseIstruttoriaValore = parseFloat((e.target as HTMLInputElement).value);
                 }}
                 placeholder="${this.speseIstruttoriaTipo === 'percentage' ? '%' : '€'}"
               />
@@ -275,7 +283,7 @@ export class MortgageForm extends LitElement {
               step="0.01"
               .value=${this.speseIncassoRata}
               @input=${(e: Event) => {
-                this.speseIncassoRata = parseFloat((e.target as HTMLInputElement).value)
+                this.speseIncassoRata = parseFloat((e.target as HTMLInputElement).value);
               }}
             />
           </div>
@@ -289,7 +297,7 @@ export class MortgageForm extends LitElement {
               step="1"
               .value=${this.spesaPerizia}
               @input=${(e: Event) => {
-                this.spesaPerizia = parseFloat((e.target as HTMLInputElement).value)
+                this.spesaPerizia = parseFloat((e.target as HTMLInputElement).value);
               }}
             />
           </div>
@@ -307,10 +315,13 @@ export class MortgageForm extends LitElement {
               step="10"
               .value=${this.risparmiMensiliForecast}
               @input=${(e: Event) => {
-                this.risparmiMensiliForecast = parseFloat((e.target as HTMLInputElement).value)
+                this.risparmiMensiliForecast = parseFloat((e.target as HTMLInputElement).value);
               }}
             />
-            <small class="form-hint">Importo che puoi risparmiare ogni mese per estinguere il mutuo anticipatamente.</small>
+            <small class="form-hint"
+              >Importo che puoi risparmiare ogni mese per estinguere il mutuo
+              anticipatamente.</small
+            >
           </div>
 
           <div class="form-group">
@@ -319,12 +330,15 @@ export class MortgageForm extends LitElement {
                 type="checkbox"
                 .checked=${this.detrazioniInteressi}
                 @change=${(e: Event) => {
-                  this.detrazioniInteressi = (e.target as HTMLInputElement).checked
+                  this.detrazioniInteressi = (e.target as HTMLInputElement).checked;
                 }}
               />
               Includi Detrazioni Interessi (19% annuale, max €760/anno)
             </label>
-            <small class="form-hint">Il governo restituisce il 19% degli interessi pagati ogni luglio, fino a €760 per anno. Questo importo si aggiungerà ai risparmi mensili.</small>
+            <small class="form-hint"
+              >Il governo restituisce il 19% degli interessi pagati ogni luglio, fino a €760 per
+              anno. Questo importo si aggiungerà ai risparmi mensili.</small
+            >
           </div>
 
           <div class="form-group">
@@ -336,23 +350,22 @@ export class MortgageForm extends LitElement {
               step="1000"
               .value=${this.detrazioneRistrutturazione}
               @input=${(e: Event) => {
-                this.detrazioneRistrutturazione = parseFloat((e.target as HTMLInputElement).value)
+                this.detrazioneRistrutturazione = parseFloat((e.target as HTMLInputElement).value);
               }}
             />
-            <small class="form-hint">Costi di ristrutturazione (max €96.000 detraibili). Riceverai il 36% di questo importo, distribuito in 10 rate annuali. Lascia vuoto se non applicabile.</small>
+            <small class="form-hint"
+              >Costi di ristrutturazione (max €96.000 detraibili). Riceverai il 36% di questo
+              importo, distribuito in 10 rate annuali. Lascia vuoto se non applicabile.</small
+            >
           </div>
         </div>
 
         <div class="form-actions">
-          <button type="button" class="btn-secondary" @click=${this.resetForm}>
-            Ripristina
-          </button>
-          <button type="submit" class="btn-primary">
-            Calcola Piano di Ammortamento
-          </button>
+          <button type="button" class="btn-secondary" @click=${this.resetForm}>Ripristina</button>
+          <button type="submit" class="btn-primary">Calcola Piano di Ammortamento</button>
         </div>
       </form>
-    `
+    `;
   }
 
   static styles = css`
@@ -497,11 +510,11 @@ export class MortgageForm extends LitElement {
         width: 100%;
       }
     }
-  `
+  `;
 }
 
 declare global {
   interface HTMLElementTagNameMap {
-    'mortgage-form': MortgageForm
+    'mortgage-form': MortgageForm;
   }
 }

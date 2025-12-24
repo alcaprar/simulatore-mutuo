@@ -1,4 +1,4 @@
-import type { MortgageInput, AmortizationRow, EarlyClosureData } from '../types.js'
+import type { MortgageInput, AmortizationRow, EarlyClosureData } from '../types.js';
 
 const MONTHS = [
   'gennaio',
@@ -13,14 +13,14 @@ const MONTHS = [
   'ottobre',
   'novembre',
   'dicembre',
-]
+];
 
 export class MortgageCalculator {
   /**
    * Calculate the monthly interest rate from annual rate
    */
   private static getMonthlyRate(annualRate: number): number {
-    return annualRate / 100 / 12
+    return annualRate / 100 / 12;
   }
 
   /**
@@ -33,86 +33,86 @@ export class MortgageCalculator {
     annualRate: number,
     months: number
   ): number {
-    const monthlyRate = this.getMonthlyRate(annualRate)
+    const monthlyRate = this.getMonthlyRate(annualRate);
 
     if (monthlyRate === 0) {
-      return principal / months
+      return principal / months;
     }
 
-    const numerator = monthlyRate * Math.pow(1 + monthlyRate, months)
-    const denominator = Math.pow(1 + monthlyRate, months) - 1
+    const numerator = monthlyRate * Math.pow(1 + monthlyRate, months);
+    const denominator = Math.pow(1 + monthlyRate, months) - 1;
 
-    return principal * (numerator / denominator)
+    return principal * (numerator / denominator);
   }
 
   /**
    * Calculate all upfront fees
    */
   private static calculateUpfrontFees(input: MortgageInput): number {
-    let totalFees = 0
+    let totalFees = 0;
 
     // Spese istruttoria
     if (input.speseIstruttoria.tipo === 'percentage') {
-      totalFees += (input.importoTotale * input.speseIstruttoria.valore) / 100
+      totalFees += (input.importoTotale * input.speseIstruttoria.valore) / 100;
     } else {
-      totalFees += input.speseIstruttoria.valore
+      totalFees += input.speseIstruttoria.valore;
     }
 
     // Spesa perizia
-    totalFees += input.spesaPerizia
+    totalFees += input.spesaPerizia;
 
-    return totalFees
+    return totalFees;
   }
 
   /**
    * Generate the complete amortization schedule
    */
   static generateAmortization(input: MortgageInput): AmortizationRow[] {
-    const upfrontFees = this.calculateUpfrontFees(input)
-    const principalAmount = input.importoTotale - upfrontFees
-    const totalMonths = input.durataAnni * 12
-    const monthlyRate = this.getMonthlyRate(input.tassoInteresse)
+    const upfrontFees = this.calculateUpfrontFees(input);
+    const principalAmount = input.importoTotale - upfrontFees;
+    const totalMonths = input.durataAnni * 12;
+    const monthlyRate = this.getMonthlyRate(input.tassoInteresse);
     const monthlyPayment = this.calculateMonthlyPayment(
       principalAmount,
       input.tassoInteresse,
       totalMonths
-    )
+    );
 
-    const schedule: AmortizationRow[] = []
-    let remainingCapital = principalAmount
-    let totalInterestPaid = 0
-    let totalPrincipalPaid = 0
-    let accumulatedSavings = 0
+    const schedule: AmortizationRow[] = [];
+    let remainingCapital = principalAmount;
+    let totalInterestPaid = 0;
+    let totalPrincipalPaid = 0;
+    let accumulatedSavings = 0;
 
-    let currentMonth = input.mesePartenza
-    let currentYear = input.annoPartenza
+    let currentMonth = input.mesePartenza;
+    let currentYear = input.annoPartenza;
 
     for (let periodo = 1; periodo <= totalMonths; periodo++) {
       // Calculate interest for this period
-      const interestPortion = remainingCapital * monthlyRate
+      const interestPortion = remainingCapital * monthlyRate;
 
       // Calculate principal for this period
-      const principalPortion = monthlyPayment - interestPortion
+      const principalPortion = monthlyPayment - interestPortion;
 
       // Update totals
-      totalInterestPaid += interestPortion
-      totalPrincipalPaid += principalPortion
+      totalInterestPaid += interestPortion;
+      totalPrincipalPaid += principalPortion;
 
       // Update remaining capital
-      remainingCapital -= principalPortion
+      remainingCapital -= principalPortion;
 
       // Ensure remaining capital doesn't go negative due to rounding
       if (remainingCapital < 0) {
-        remainingCapital = 0
+        remainingCapital = 0;
       }
 
       // Accumulate savings if specified
       if (input.risparmiMensiliForecast && input.risparmiMensiliForecast > 0) {
-        accumulatedSavings += input.risparmiMensiliForecast
+        accumulatedSavings += input.risparmiMensiliForecast;
       }
 
       // Add collection fees to the monthly payment (if any)
-      const totalMonthlyPayment = monthlyPayment + input.speseIncassoRata
+      const totalMonthlyPayment = monthlyPayment + input.speseIncassoRata;
 
       const row: AmortizationRow = {
         periodo,
@@ -125,24 +125,24 @@ export class MortgageCalculator {
         totaleIntaressPagato: totalInterestPaid,
         totalePrincipalPagato: totalPrincipalPaid,
         capitaleRimanente: remainingCapital,
-      }
+      };
 
       // Only add accumulated savings if forecasted savings are provided
       if (input.risparmiMensiliForecast && input.risparmiMensiliForecast > 0) {
-        row.risparmiAccumulati = accumulatedSavings
+        row.risparmiAccumulati = accumulatedSavings;
       }
 
-      schedule.push(row)
+      schedule.push(row);
 
       // Move to next month
-      currentMonth++
+      currentMonth++;
       if (currentMonth > 11) {
-        currentMonth = 0
-        currentYear++
+        currentMonth = 0;
+        currentYear++;
       }
     }
 
-    return schedule
+    return schedule;
   }
 
   /**
@@ -154,14 +154,14 @@ export class MortgageCalculator {
       currency: 'EUR',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(value)
+    }).format(value);
   }
 
   /**
    * Format a percentage
    */
   static formatPercentage(value: number): string {
-    return `${value.toFixed(2)}%`
+    return `${value.toFixed(2)}%`;
   }
 
   /**
@@ -174,52 +174,53 @@ export class MortgageCalculator {
     renovationAmount: number = 0
   ): EarlyClosureData {
     if (monthlySavings <= 0 && !includeInterestDeductions && renovationAmount <= 0) {
-      return { isPossible: false }
+      return { isPossible: false };
     }
 
-    let accumulatedSavings = 0
-    const yearlyInterestDeductions: Record<number, number> = {}
+    let accumulatedSavings = 0;
+    const yearlyInterestDeductions: Record<number, number> = {};
 
     // Calculate yearly interest deductions if enabled
     if (includeInterestDeductions) {
       for (const row of schedule) {
-        const year = row.anno
-        const month = row.mese
+        const year = row.anno;
+        const month = row.mese;
 
         // Interest deductions happen in July (month 6)
         if (month === 6) {
           // Calculate 19% of interest paid up to July, capped at €760
-          const interestDeduction = Math.min(row.totaleIntaressPagato * 0.19, 760)
-          yearlyInterestDeductions[year] = interestDeduction
+          const interestDeduction = Math.min(row.totaleIntaressPagato * 0.19, 760);
+          yearlyInterestDeductions[year] = interestDeduction;
         }
       }
     }
 
     // Calculate yearly renovation deduction (capped at €96,000)
-    const cappedRenovationAmount = Math.min(renovationAmount, 96000)
-    const renovationDeduction = cappedRenovationAmount > 0 ? (cappedRenovationAmount * 0.36) / 10 : 0
+    const cappedRenovationAmount = Math.min(renovationAmount, 96000);
+    const renovationDeduction =
+      cappedRenovationAmount > 0 ? (cappedRenovationAmount * 0.36) / 10 : 0;
 
     for (const row of schedule) {
       // Add monthly savings
-      accumulatedSavings += monthlySavings
+      accumulatedSavings += monthlySavings;
 
       // Add interest deduction if in July
       if (includeInterestDeductions && row.mese === 6 && yearlyInterestDeductions[row.anno]) {
-        accumulatedSavings += yearlyInterestDeductions[row.anno]
+        accumulatedSavings += yearlyInterestDeductions[row.anno];
       }
 
       // Add renovation deduction every month (spread across 12 months)
       if (renovationDeduction > 0) {
-        accumulatedSavings += renovationDeduction / 12
+        accumulatedSavings += renovationDeduction / 12;
       }
 
-      const remainingCapital = row.capitaleRimanente
+      const remainingCapital = row.capitaleRimanente;
 
       // Check if accumulated savings are enough to cover remaining capital
       if (accumulatedSavings >= remainingCapital) {
-        const monthsFromStart = row.periodo
-        const totalMonths = schedule.length
-        const monthsSaved = totalMonths - monthsFromStart
+        const monthsFromStart = row.periodo;
+        const totalMonths = schedule.length;
+        const monthsSaved = totalMonths - monthsFromStart;
 
         return {
           isPossible: true,
@@ -228,11 +229,11 @@ export class MortgageCalculator {
           risparmiAccumulati: accumulatedSavings,
           capitalePagato: remainingCapital,
           mesiRisparmiati: monthsSaved,
-        }
+        };
       }
     }
 
     // Savings are not enough to close early
-    return { isPossible: false }
+    return { isPossible: false };
   }
 }

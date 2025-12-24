@@ -1,67 +1,67 @@
-import { LitElement, css, html } from 'lit'
-import { customElement, property, state } from 'lit/decorators.js'
-import type { MortgageData, MortgageInput, EarlyClosureData } from '../types.js'
-import { StorageService } from '../storage.js'
-import { MortgageCalculator } from '../utils/mortgage-calculator.js'
-import './mortgage-form.js'
-import './amortization-table.js'
+import { LitElement, css, html } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import type { MortgageData, MortgageInput, EarlyClosureData } from '../types.js';
+import { StorageService } from '../storage.js';
+import { MortgageCalculator } from '../utils/mortgage-calculator.js';
+import './mortgage-form.js';
+import './amortization-table.js';
 
 @customElement('mortgage-tab')
 export class MortgageTab extends LitElement {
   @property({ type: String })
-  tabId: string = ''
+  tabId: string = '';
 
   @property({ type: String })
-  tabName: string = ''
+  tabName: string = '';
 
   @state()
-  private mortgage: MortgageData | null = null
+  private mortgage: MortgageData | null = null;
 
   @state()
-  private showForm: boolean = true
+  private showForm: boolean = true;
 
-  private lastTabId?: string
+  private lastTabId?: string;
 
   connectedCallback() {
-    super.connectedCallback()
-    this.loadMortgage()
+    super.connectedCallback();
+    this.loadMortgage();
   }
 
   updated(changedProperties: Map<string, unknown>) {
     // Reload mortgage when tabId changes
     if (changedProperties.has('tabId') && this.tabId && this.tabId !== this.lastTabId) {
-      this.loadMortgage()
+      this.loadMortgage();
     }
   }
 
   private loadMortgage(): void {
     if (this.tabId) {
-      this.lastTabId = this.tabId
-      this.mortgage = StorageService.getMortgage(this.tabId)
-      this.showForm = !this.mortgage
+      this.lastTabId = this.tabId;
+      this.mortgage = StorageService.getMortgage(this.tabId);
+      this.showForm = !this.mortgage;
     }
   }
 
   private handleMortgageCalculated(event: CustomEvent<{ input: MortgageInput }>): void {
-    if (!this.tabId) return
+    if (!this.tabId) return;
 
-    const input = event.detail.input
+    const input = event.detail.input;
     // Use tab name if no mortgage name, or create one from the bank name
-    const nome = this.tabName || `Mutuo ${new Date().toLocaleDateString('it-IT')}`
+    const nome = this.tabName || `Mutuo ${new Date().toLocaleDateString('it-IT')}`;
 
-    this.mortgage = StorageService.createMortgage(this.tabId, nome, input)
-    this.showForm = false
+    this.mortgage = StorageService.createMortgage(this.tabId, nome, input);
+    this.showForm = false;
   }
 
   private handleEditMortgage(): void {
-    this.showForm = true
+    this.showForm = true;
   }
 
   private handleDeleteMortgage(): void {
     if (confirm('Sei sicuro di voler eliminare questo mutuo?')) {
-      StorageService.deleteMortgage(this.tabId)
-      this.mortgage = null
-      this.showForm = true
+      StorageService.deleteMortgage(this.tabId);
+      this.mortgage = null;
+      this.showForm = true;
     }
   }
 
@@ -98,10 +98,18 @@ export class MortgageTab extends LitElement {
                       <h3>Parametri Mutuo</h3>
                       <dl class="summary-list">
                         <dt>Importo:</dt>
-                        <dd>${new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(this.mortgage.input.importoTotale)}</dd>
+                        <dd>
+                          ${new Intl.NumberFormat('it-IT', {
+                            style: 'currency',
+                            currency: 'EUR',
+                          }).format(this.mortgage.input.importoTotale)}
+                        </dd>
 
                         <dt>Durata:</dt>
-                        <dd>${this.mortgage.input.durataAnni} anni (${this.mortgage.input.durataAnni * 12} mesi)</dd>
+                        <dd>
+                          ${this.mortgage.input.durataAnni} anni
+                          (${this.mortgage.input.durataAnni * 12} mesi)
+                        </dd>
 
                         <dt>Tasso Interesse:</dt>
                         <dd>${this.mortgage.input.tassoInteresse.toFixed(2)}% annuale</dd>
@@ -121,16 +129,27 @@ export class MortgageTab extends LitElement {
                         <dd>
                           ${this.mortgage.input.speseIstruttoria.tipo === 'percentage'
                             ? `${this.mortgage.input.speseIstruttoria.valore.toFixed(2)}% dell'importo`
-                            : new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(this.mortgage.input.speseIstruttoria.valore)}
+                            : new Intl.NumberFormat('it-IT', {
+                                style: 'currency',
+                                currency: 'EUR',
+                              }).format(this.mortgage.input.speseIstruttoria.valore)}
                         </dd>
 
                         <dt>Incasso Rata:</dt>
                         <dd>
-                          ${new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(this.mortgage.input.speseIncassoRata)}/mese
+                          ${new Intl.NumberFormat('it-IT', {
+                            style: 'currency',
+                            currency: 'EUR',
+                          }).format(this.mortgage.input.speseIncassoRata)}/mese
                         </dd>
 
                         <dt>Perizia:</dt>
-                        <dd>${new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(this.mortgage.input.spesaPerizia)}</dd>
+                        <dd>
+                          ${new Intl.NumberFormat('it-IT', {
+                            style: 'currency',
+                            currency: 'EUR',
+                          }).format(this.mortgage.input.spesaPerizia)}
+                        </dd>
                       </dl>
                     </div>
                   </div>
@@ -139,26 +158,33 @@ export class MortgageTab extends LitElement {
                     <div class="expense-card">
                       <div class="expense-label">Totale Interessi</div>
                       <div class="expense-value">
-                        ${new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(this._calculateTotalInterests())}
+                        ${new Intl.NumberFormat('it-IT', {
+                          style: 'currency',
+                          currency: 'EUR',
+                        }).format(this._calculateTotalInterests())}
                       </div>
                     </div>
                     <div class="expense-card">
                       <div class="expense-label">Totale Altre Spese</div>
                       <div class="expense-value">
-                        ${new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(this._calculateTotalOtherCosts())}
+                        ${new Intl.NumberFormat('it-IT', {
+                          style: 'currency',
+                          currency: 'EUR',
+                        }).format(this._calculateTotalOtherCosts())}
                       </div>
                     </div>
                     <div class="expense-card grand-total">
                       <div class="expense-label">Costo Totale</div>
                       <div class="expense-value">
-                        ${new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(this._calculateGrandTotal())}
+                        ${new Intl.NumberFormat('it-IT', {
+                          style: 'currency',
+                          currency: 'EUR',
+                        }).format(this._calculateGrandTotal())}
                       </div>
                     </div>
                     <div class="expense-card comparison-card">
                       <div class="expense-label">Costo Effettivo</div>
-                      <div class="expense-value">
-                        ${this._calculateEffectiveRate().toFixed(2)}%
-                      </div>
+                      <div class="expense-value">${this._calculateEffectiveRate().toFixed(2)}%</div>
                       <div class="expense-subtext">del prestito iniziale</div>
                     </div>
                     <div class="expense-card comparison-card">
@@ -171,27 +197,52 @@ export class MortgageTab extends LitElement {
                   </div>
 
                   ${(() => {
-                    const input = this.mortgage.input
-                    const hasSavings = input.risparmiMensiliForecast && input.risparmiMensiliForecast > 0
-                    const hasDeductions = input.detrazioniInteressi || (input.detrazioneRistrutturazione && input.detrazioneRistrutturazione > 0)
+                    const input = this.mortgage.input;
+                    const hasSavings =
+                      input.risparmiMensiliForecast && input.risparmiMensiliForecast > 0;
+                    const hasDeductions =
+                      input.detrazioniInteressi ||
+                      (input.detrazioneRistrutturazione && input.detrazioneRistrutturazione > 0);
 
                     return hasSavings || hasDeductions
                       ? (() => {
-                          const closure = this._calculateEarlyClosure()
+                          const closure = this._calculateEarlyClosure();
                           return closure.isPossible
                             ? html`
                                 <div class="early-closure-section">
                                   <h3>Chiusura Anticipata</h3>
                                   <div class="closure-summary">
-                                    ${hasSavings ? html`<p><strong>Risparmi mensili:</strong> ${new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(input.risparmiMensiliForecast!)}</p>` : ''}
-                                    ${input.detrazioniInteressi ? html`<p><strong>Detrazioni interessi:</strong> 19% annuale (max €760/anno)</p>` : ''}
-                                    ${input.detrazioneRistrutturazione ? html`<p><strong>Detrazione ristrutturazione:</strong> 36% di €${new Intl.NumberFormat('it-IT').format(input.detrazioneRistrutturazione)} in 10 rate</p>` : ''}
+                                    ${hasSavings
+                                      ? html`<p>
+                                          <strong>Risparmi mensili:</strong>
+                                          ${new Intl.NumberFormat('it-IT', {
+                                            style: 'currency',
+                                            currency: 'EUR',
+                                          }).format(input.risparmiMensiliForecast!)}
+                                        </p>`
+                                      : ''}
+                                    ${input.detrazioniInteressi
+                                      ? html`<p>
+                                          <strong>Detrazioni interessi:</strong> 19% annuale (max
+                                          €760/anno)
+                                        </p>`
+                                      : ''}
+                                    ${input.detrazioneRistrutturazione
+                                      ? html`<p>
+                                          <strong>Detrazione ristrutturazione:</strong> 36% di
+                                          €${new Intl.NumberFormat('it-IT').format(
+                                            input.detrazioneRistrutturazione
+                                          )}
+                                          in 10 rate
+                                        </p>`
+                                      : ''}
                                   </div>
                                   <div class="closure-info">
                                     <div class="closure-card success">
                                       <div class="closure-label">Data Prevista di Chiusura</div>
                                       <div class="closure-value">
-                                        ${this._getMonthName(closure.meseChiusura! % 12)} ${closure.annoChiusura}
+                                        ${this._getMonthName(closure.meseChiusura! % 12)}
+                                        ${closure.annoChiusura}
                                       </div>
                                     </div>
                                     <div class="closure-card">
@@ -203,13 +254,19 @@ export class MortgageTab extends LitElement {
                                     <div class="closure-card">
                                       <div class="closure-label">Risparmi Accumulati</div>
                                       <div class="closure-value">
-                                        ${new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(closure.risparmiAccumulati!)}
+                                        ${new Intl.NumberFormat('it-IT', {
+                                          style: 'currency',
+                                          currency: 'EUR',
+                                        }).format(closure.risparmiAccumulati!)}
                                       </div>
                                     </div>
                                     <div class="closure-card">
                                       <div class="closure-label">Capitale da Pagare</div>
                                       <div class="closure-value">
-                                        ${new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(closure.capitalePagato!)}
+                                        ${new Intl.NumberFormat('it-IT', {
+                                          style: 'currency',
+                                          currency: 'EUR',
+                                        }).format(closure.capitalePagato!)}
                                       </div>
                                     </div>
                                   </div>
@@ -219,17 +276,40 @@ export class MortgageTab extends LitElement {
                                 <div class="early-closure-section">
                                   <h3>Chiusura Anticipata</h3>
                                   <div class="closure-summary">
-                                    ${hasSavings ? html`<p><strong>Risparmi mensili:</strong> ${new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(input.risparmiMensiliForecast!)}</p>` : ''}
-                                    ${input.detrazioniInteressi ? html`<p><strong>Detrazioni interessi:</strong> 19% annuale (max €760/anno)</p>` : ''}
-                                    ${input.detrazioneRistrutturazione ? html`<p><strong>Detrazione ristrutturazione:</strong> 36% di €${new Intl.NumberFormat('it-IT').format(input.detrazioneRistrutturazione)} in 10 rate</p>` : ''}
+                                    ${hasSavings
+                                      ? html`<p>
+                                          <strong>Risparmi mensili:</strong>
+                                          ${new Intl.NumberFormat('it-IT', {
+                                            style: 'currency',
+                                            currency: 'EUR',
+                                          }).format(input.risparmiMensiliForecast!)}
+                                        </p>`
+                                      : ''}
+                                    ${input.detrazioniInteressi
+                                      ? html`<p>
+                                          <strong>Detrazioni interessi:</strong> 19% annuale (max
+                                          €760/anno)
+                                        </p>`
+                                      : ''}
+                                    ${input.detrazioneRistrutturazione
+                                      ? html`<p>
+                                          <strong>Detrazione ristrutturazione:</strong> 36% di
+                                          €${new Intl.NumberFormat('it-IT').format(
+                                            input.detrazioneRistrutturazione
+                                          )}
+                                          in 10 rate
+                                        </p>`
+                                      : ''}
                                   </div>
                                   <p class="closure-warning">
-                                    Gli importi inseriti non sono sufficienti per estinguere il mutuo anticipatamente. Aumenta i risparmi mensili o l'importo della ristrutturazione.
+                                    Gli importi inseriti non sono sufficienti per estinguere il
+                                    mutuo anticipatamente. Aumenta i risparmi mensili o l'importo
+                                    della ristrutturazione.
                                   </p>
                                 </div>
-                              `
+                              `;
                         })()
-                      : ''
+                      : '';
                   })()}
 
                   <div class="table-section">
@@ -240,7 +320,7 @@ export class MortgageTab extends LitElement {
               `
             : html`<p class="no-data">Nessun dato disponibile</p>`}
       </div>
-    `
+    `;
   }
 
   private _getMonthName(mese: number): string {
@@ -257,67 +337,69 @@ export class MortgageTab extends LitElement {
       'ottobre',
       'novembre',
       'dicembre',
-    ]
-    return months[mese] || ''
+    ];
+    return months[mese] || '';
   }
 
   private _calculateTotalInterests(): number {
-    if (!this.mortgage || this.mortgage.amortization.length === 0) return 0
-    return this.mortgage.amortization[this.mortgage.amortization.length - 1].totaleIntaressPagato
+    if (!this.mortgage || this.mortgage.amortization.length === 0) return 0;
+    return this.mortgage.amortization[this.mortgage.amortization.length - 1].totaleIntaressPagato;
   }
 
   private _calculateTotalOtherCosts(): number {
-    if (!this.mortgage) return 0
+    if (!this.mortgage) return 0;
 
-    const input = this.mortgage.input
-    let totalCosts = 0
+    const input = this.mortgage.input;
+    let totalCosts = 0;
 
     // Spese istruttoria
     if (input.speseIstruttoria.tipo === 'percentage') {
-      totalCosts += (input.importoTotale * input.speseIstruttoria.valore) / 100
+      totalCosts += (input.importoTotale * input.speseIstruttoria.valore) / 100;
     } else {
-      totalCosts += input.speseIstruttoria.valore
+      totalCosts += input.speseIstruttoria.valore;
     }
 
     // Spese incasso rata (monthly fee * number of months)
-    const numMonths = input.durataAnni * 12
-    totalCosts += input.speseIncassoRata * numMonths
+    const numMonths = input.durataAnni * 12;
+    totalCosts += input.speseIncassoRata * numMonths;
 
     // Spesa perizia
-    totalCosts += input.spesaPerizia
+    totalCosts += input.spesaPerizia;
 
-    return totalCosts
+    return totalCosts;
   }
 
   private _calculateGrandTotal(): number {
-    return this._calculateTotalInterests() + this._calculateTotalOtherCosts()
+    return this._calculateTotalInterests() + this._calculateTotalOtherCosts();
   }
 
   private _calculateEffectiveRate(): number {
-    if (!this.mortgage) return 0
-    const totalCost = this._calculateGrandTotal()
-    const initialAmount = this.mortgage.input.importoTotale
-    return (totalCost / initialAmount) * 100
+    if (!this.mortgage) return 0;
+    const totalCost = this._calculateGrandTotal();
+    const initialAmount = this.mortgage.input.importoTotale;
+    return (totalCost / initialAmount) * 100;
   }
 
   private _calculateCostMultiplier(): number {
-    if (!this.mortgage) return 0
-    const totalCost = this._calculateGrandTotal()
-    const initialAmount = this.mortgage.input.importoTotale
-    return (initialAmount + totalCost) / initialAmount
+    if (!this.mortgage) return 0;
+    const totalCost = this._calculateGrandTotal();
+    const initialAmount = this.mortgage.input.importoTotale;
+    return (initialAmount + totalCost) / initialAmount;
   }
 
   private _calculateEarlyClosure(): EarlyClosureData {
     if (!this.mortgage) {
-      return { isPossible: false }
+      return { isPossible: false };
     }
 
-    const input = this.mortgage.input
-    const hasSavings = input.risparmiMensiliForecast && input.risparmiMensiliForecast > 0
-    const hasDeductions = input.detrazioniInteressi || (input.detrazioneRistrutturazione && input.detrazioneRistrutturazione > 0)
+    const input = this.mortgage.input;
+    const hasSavings = input.risparmiMensiliForecast && input.risparmiMensiliForecast > 0;
+    const hasDeductions =
+      input.detrazioniInteressi ||
+      (input.detrazioneRistrutturazione && input.detrazioneRistrutturazione > 0);
 
     if (!hasSavings && !hasDeductions) {
-      return { isPossible: false }
+      return { isPossible: false };
     }
 
     return MortgageCalculator.calculateEarlyClosure(
@@ -325,7 +407,7 @@ export class MortgageTab extends LitElement {
       input.risparmiMensiliForecast || 0,
       input.detrazioniInteressi || false,
       input.detrazioneRistrutturazione || 0
-    )
+    );
   }
 
   static styles = css`
@@ -467,7 +549,11 @@ export class MortgageTab extends LitElement {
 
     .expense-card.grand-total {
       border-left-color: var(--success);
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.02) 100%);
+      background: linear-gradient(
+        135deg,
+        rgba(16, 185, 129, 0.05) 0%,
+        rgba(16, 185, 129, 0.02) 100%
+      );
     }
 
     .expense-label {
@@ -493,7 +579,11 @@ export class MortgageTab extends LitElement {
 
     .expense-card.comparison-card {
       border-left-color: var(--primary);
-      background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(59, 130, 246, 0.02) 100%);
+      background: linear-gradient(
+        135deg,
+        rgba(59, 130, 246, 0.05) 0%,
+        rgba(59, 130, 246, 0.02) 100%
+      );
     }
 
     .expense-subtext {
@@ -560,7 +650,11 @@ export class MortgageTab extends LitElement {
 
     .closure-card.success {
       border-left-color: var(--success);
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.02) 100%);
+      background: linear-gradient(
+        135deg,
+        rgba(16, 185, 129, 0.05) 0%,
+        rgba(16, 185, 129, 0.02) 100%
+      );
     }
 
     .closure-label {
@@ -620,11 +714,11 @@ export class MortgageTab extends LitElement {
         grid-template-columns: 1fr;
       }
     }
-  `
+  `;
 }
 
 declare global {
   interface HTMLElementTagNameMap {
-    'mortgage-tab': MortgageTab
+    'mortgage-tab': MortgageTab;
   }
 }
