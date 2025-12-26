@@ -181,6 +181,79 @@ export class MortgagesSummary extends LitElement {
     return months[mese] || '';
   }
 
+  private _calculateEndDate(
+    startMonth: number,
+    startYear: number,
+    durationYears: number
+  ): { month: number; year: number } {
+    let endMonth = startMonth + durationYears * 12;
+    let endYear = startYear;
+
+    endYear += Math.floor(endMonth / 12);
+    endMonth = endMonth % 12;
+
+    return { month: endMonth, year: endYear };
+  }
+
+  private _getVirtualMortgageEndDate(sourceMortgages: MortgageData[]): {
+    month: number;
+    year: number;
+  } {
+    let latestMonth = 0;
+    let latestYear = 0;
+
+    for (const mortgage of sourceMortgages) {
+      const endDate = this._calculateEndDate(
+        mortgage.input.mesePartenza,
+        mortgage.input.annoPartenza,
+        mortgage.input.durataAnni
+      );
+
+      if (
+        endDate.year > latestYear ||
+        (endDate.year === latestYear && endDate.month > latestMonth)
+      ) {
+        latestYear = endDate.year;
+        latestMonth = endDate.month;
+      }
+    }
+
+    return { month: latestMonth, year: latestYear };
+  }
+
+  private _getVirtualMortgageEarlyClosure(sourceMortgages: MortgageData[]): EarlyClosureData {
+    // Virtual mortgage can only close early if ALL source mortgages can close early
+    // Otherwise, payments continue on mortgages that don't have early closure capability
+    let latestClosure: EarlyClosureData = { isPossible: false };
+    let allCanClose = true;
+
+    for (const mortgage of sourceMortgages) {
+      const closure = this._calculateEarlyClosure(mortgage);
+
+      if (!closure.isPossible) {
+        // At least one mortgage can't close early
+        allCanClose = false;
+        break;
+      }
+
+      if (closure.isPossible && closure.annoChiusura) {
+        // Find the latest closure date
+        if (
+          !latestClosure.isPossible ||
+          !latestClosure.annoChiusura ||
+          closure.annoChiusura > latestClosure.annoChiusura ||
+          (closure.annoChiusura === latestClosure.annoChiusura &&
+            (closure.meseChiusura || 0) > (latestClosure.meseChiusura || 0))
+        ) {
+          latestClosure = closure;
+        }
+      }
+    }
+
+    // Only return early closure if ALL mortgages can close early
+    return allCanClose ? latestClosure : { isPossible: false };
+  }
+
   private _calculateEarlyClosure(mortgage: MortgageData): EarlyClosureData {
     const input = mortgage.input;
     const hasSavings = input.risparmiMensiliForecast && input.risparmiMensiliForecast > 0;
@@ -237,6 +310,7 @@ export class MortgagesSummary extends LitElement {
                   <th>Durata</th>
                   <th>Tasso</th>
                   <th>Inizio</th>
+                  <th>Fine</th>
                   <th>Chiusura Anticipata</th>
                   <th>Tot. Interessi</th>
                   <th>Tot. Altre Spese</th>
@@ -260,6 +334,16 @@ export class MortgagesSummary extends LitElement {
                       <td>
                         ${this._getMonthName(row.mortgage.input.mesePartenza)}
                         ${row.mortgage.input.annoPartenza}
+                      </td>
+                      <td>
+                        ${(() => {
+                          const endDate = this._calculateEndDate(
+                            row.mortgage.input.mesePartenza,
+                            row.mortgage.input.annoPartenza,
+                            row.mortgage.input.durataAnni
+                          );
+                          return html`${this._getMonthName(endDate.month)} ${endDate.year}`;
+                        })()}
                       </td>
                       <td class="early-closure-date">
                         ${(() => {
@@ -318,11 +402,42 @@ export class MortgagesSummary extends LitElement {
                       <td colspan="2">
                         <span class="virtual-note">Multipli mutui</span>
                       </td>
-                      <td colspan="1">
-                        <span class="virtual-note">Vedi dettagli →</span>
+                      <td>
+                        ${(() => {
+                          const startDate = (() => {
+                            let earliestMonth = 11;
+                            let earliestYear = 9999;
+                            for (const m of row.sourceMortgages) {
+                              if (
+                                m.input.annoPartenza < earliestYear ||
+                                (m.input.annoPartenza === earliestYear &&
+                                  m.input.mesePartenza < earliestMonth)
+                              ) {
+                                earliestYear = m.input.annoPartenza;
+                                earliestMonth = m.input.mesePartenza;
+                              }
+                            }
+                            return { month: earliestMonth, year: earliestYear };
+                          })();
+                          return html`${this._getMonthName(startDate.month)} ${startDate.year}`;
+                        })()}
+                      </td>
+                      <td>
+                        ${(() => {
+                          const endDate = this._getVirtualMortgageEndDate(row.sourceMortgages);
+                          return html`${this._getMonthName(endDate.month)} ${endDate.year}`;
+                        })()}
                       </td>
                       <td class="early-closure-date">
-                        <span class="closure-not-applicable">N/A</span>
+                        ${(() => {
+                          const closure = this._getVirtualMortgageEarlyClosure(row.sourceMortgages);
+                          return closure.isPossible
+                            ? html`<span class="closure-date-value"
+                                >${this._getMonthName(closure.meseChiusura! % 12)}
+                                ${closure.annoChiusura}</span
+                              >`
+                            : html`<span class="closure-not-feasible">Non fattibile</span>`;
+                        })()}
                       </td>
                       <td class="currency highlight-interest">
                         ${this._formatCurrency(row.totalInterests)}
@@ -395,6 +510,33 @@ export class MortgagesSummary extends LitElement {
 
                       <dt>Periodi Diversi:</dt>
                       <dd class="virtual-note">Vedi dettagli sulla scheda</dd>
+
+                      <dt>Data Inizio (Earliest):</dt>
+                      <dd>
+                        ${(() => {
+                          let earliestMonth = 11;
+                          let earliestYear = 9999;
+                          for (const m of row.sourceMortgages) {
+                            if (
+                              m.input.annoPartenza < earliestYear ||
+                              (m.input.annoPartenza === earliestYear &&
+                                m.input.mesePartenza < earliestMonth)
+                            ) {
+                              earliestYear = m.input.annoPartenza;
+                              earliestMonth = m.input.mesePartenza;
+                            }
+                          }
+                          return html`${this._getMonthName(earliestMonth)} ${earliestYear}`;
+                        })()}
+                      </dd>
+
+                      <dt>Data Fine (Latest):</dt>
+                      <dd>
+                        ${(() => {
+                          const endDate = this._getVirtualMortgageEndDate(row.sourceMortgages);
+                          return html`${this._getMonthName(endDate.month)} ${endDate.year}`;
+                        })()}
+                      </dd>
                     </dl>
                   </div>
 
@@ -448,6 +590,18 @@ export class MortgagesSummary extends LitElement {
                       <dd>
                         ${this._getMonthName(row.mortgage.input.mesePartenza)}
                         ${row.mortgage.input.annoPartenza}
+                      </dd>
+
+                      <dt>Data Fine:</dt>
+                      <dd>
+                        ${(() => {
+                          const endDate = this._calculateEndDate(
+                            row.mortgage.input.mesePartenza,
+                            row.mortgage.input.annoPartenza,
+                            row.mortgage.input.durataAnni
+                          );
+                          return html`${this._getMonthName(endDate.month)} ${endDate.year}`;
+                        })()}
                       </dd>
                     </dl>
                   </div>
