@@ -38,6 +38,18 @@ export class MortgageForm extends LitElement {
   private numeroPerizie: number = 1;
 
   @state()
+  private assicurazioneIncendioTipo: 'onetime' | 'monthly' = 'onetime';
+
+  @state()
+  private assicurazioneIncendioValore: number = 0;
+
+  @state()
+  private assicurazioneAggiuntivaTipo: 'onetime' | 'monthly' = 'monthly';
+
+  @state()
+  private assicurazioneAggiuntivaValore: number = 0;
+
+  @state()
   private risparmiMensiliForecast: number = 0;
 
   @state()
@@ -84,6 +96,11 @@ export class MortgageForm extends LitElement {
       this.speseIncassoRata = this.initialInput.speseIncassoRata;
       this.spesaPerizia = this.initialInput.spesaPerizia;
       this.numeroPerizie = this.initialInput.numeroPerizie || 1;
+      this.assicurazioneIncendioTipo = this.initialInput.assicurazioneIncendio?.tipo || 'onetime';
+      this.assicurazioneIncendioValore = this.initialInput.assicurazioneIncendio?.valore || 0;
+      this.assicurazioneAggiuntivaTipo =
+        this.initialInput.assicurazioneAggiuntiva?.tipo || 'monthly';
+      this.assicurazioneAggiuntivaValore = this.initialInput.assicurazioneAggiuntiva?.valore || 0;
       this.risparmiMensiliForecast = this.initialInput.risparmiMensiliForecast || 0;
       this.detrazioneRistrutturazione = this.initialInput.detrazioneRistrutturazione || 0;
       this.detrazioniInteressi = this.initialInput.detrazioniInteressi || false;
@@ -99,6 +116,10 @@ export class MortgageForm extends LitElement {
       this.speseIncassoRata = 0;
       this.spesaPerizia = 600;
       this.numeroPerizie = 1;
+      this.assicurazioneIncendioTipo = 'onetime';
+      this.assicurazioneIncendioValore = 0;
+      this.assicurazioneAggiuntivaTipo = 'monthly';
+      this.assicurazioneAggiuntivaValore = 0;
       this.risparmiMensiliForecast = 0;
       this.detrazioneRistrutturazione = 0;
       this.detrazioniInteressi = false;
@@ -134,6 +155,20 @@ export class MortgageForm extends LitElement {
       speseIncassoRata: this.speseIncassoRata,
       spesaPerizia: this.spesaPerizia,
       numeroPerizie: this.numeroPerizie || undefined,
+      assicurazioneIncendio:
+        this.assicurazioneIncendioValore > 0
+          ? {
+              tipo: this.assicurazioneIncendioTipo,
+              valore: this.assicurazioneIncendioValore,
+            }
+          : undefined,
+      assicurazioneAggiuntiva:
+        this.assicurazioneAggiuntivaValore > 0
+          ? {
+              tipo: this.assicurazioneAggiuntivaTipo,
+              valore: this.assicurazioneAggiuntivaValore,
+            }
+          : undefined,
       risparmiMensiliForecast: this.risparmiMensiliForecast || undefined,
       detrazioneRistrutturazione: this.detrazioneRistrutturazione || undefined,
       detrazioniInteressi: this.detrazioniInteressi || undefined,
@@ -159,6 +194,10 @@ export class MortgageForm extends LitElement {
     this.speseIncassoRata = 0;
     this.spesaPerizia = 600;
     this.numeroPerizie = 1;
+    this.assicurazioneIncendioTipo = 'onetime';
+    this.assicurazioneIncendioValore = 0;
+    this.assicurazioneAggiuntivaTipo = 'monthly';
+    this.assicurazioneAggiuntivaValore = 0;
     this.risparmiMensiliForecast = 0;
     this.detrazioneRistrutturazione = 0;
     this.detrazioniInteressi = false;
@@ -332,6 +371,72 @@ export class MortgageForm extends LitElement {
             <small class="form-hint"
               >In alcuni casi, come il mutuo a stato avanzamento lavori (SAL), ci possono essere più
               di una perizia.</small
+            >
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>Assicurazioni (Opzionali)</h3>
+
+          <div class="form-group">
+            <label>Assicurazione Incendio, Scoppio</label>
+            <div class="fee-input-group">
+              <input
+                type="number"
+                min="0"
+                step="1"
+                .value=${this.assicurazioneIncendioValore}
+                @input=${(e: Event) => {
+                  this.assicurazioneIncendioValore = parseFloat(
+                    (e.target as HTMLInputElement).value
+                  );
+                }}
+                placeholder="€"
+              />
+              <select
+                .value=${this.assicurazioneIncendioTipo}
+                @change=${(e: Event) => {
+                  this.assicurazioneIncendioTipo = (e.target as HTMLSelectElement).value as
+                    | 'onetime'
+                    | 'monthly';
+                }}
+              >
+                <option value="onetime">Una tantum</option>
+                <option value="monthly">Mensile</option>
+              </select>
+            </div>
+            <small class="form-hint">Assicurazione obbligatoria su immobili.</small>
+          </div>
+
+          <div class="form-group">
+            <label>Assicurazione Aggiuntiva</label>
+            <div class="fee-input-group">
+              <input
+                type="number"
+                min="0"
+                step="1"
+                .value=${this.assicurazioneAggiuntivaValore}
+                @input=${(e: Event) => {
+                  this.assicurazioneAggiuntivaValore = parseFloat(
+                    (e.target as HTMLInputElement).value
+                  );
+                }}
+                placeholder="€"
+              />
+              <select
+                .value=${this.assicurazioneAggiuntivaTipo}
+                @change=${(e: Event) => {
+                  this.assicurazioneAggiuntivaTipo = (e.target as HTMLSelectElement).value as
+                    | 'onetime'
+                    | 'monthly';
+                }}
+              >
+                <option value="onetime">Una tantum</option>
+                <option value="monthly">Mensile</option>
+              </select>
+            </div>
+            <small class="form-hint"
+              >Coperture aggiuntive come morte, malattia, disoccupazione.</small
             >
           </div>
         </div>

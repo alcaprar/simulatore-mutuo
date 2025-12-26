@@ -20,6 +20,12 @@ export class MortgageTab extends LitElement {
   @state()
   private showForm: boolean = true;
 
+  @state()
+  private showDeleteWarning: boolean = false;
+
+  @state()
+  private referencedVirtualMortgages: string[] = [];
+
   private lastTabId?: string;
 
   connectedCallback() {
@@ -58,11 +64,46 @@ export class MortgageTab extends LitElement {
   }
 
   private handleDeleteMortgage(): void {
+    // Check if this mortgage is referenced by any virtual mortgages
+    const virtuals = StorageService.getVirtualsReferencingMortgage(this.tabId);
+
+    if (virtuals.length > 0) {
+      this.referencedVirtualMortgages = virtuals.map((v) => v.nome);
+      this.showDeleteWarning = true;
+      return;
+    }
+
+    // No virtual mortgages referencing this, proceed with deletion
+    this.confirmDeleteMortgage();
+  }
+
+  private confirmDeleteMortgage(): void {
     if (confirm('Sei sicuro di voler eliminare questo mutuo?')) {
       StorageService.deleteMortgage(this.tabId);
       this.mortgage = null;
       this.showForm = true;
     }
+    this.showDeleteWarning = false;
+  }
+
+  private cancelDeleteWarning(): void {
+    this.showDeleteWarning = false;
+    this.referencedVirtualMortgages = [];
+  }
+
+  private confirmDeleteWithVirtuals(): void {
+    // User confirms they want to delete despite virtual references
+    // Emit event to parent app to handle cascade delete
+    this.dispatchEvent(
+      new CustomEvent('delete-mortgage-with-virtuals', {
+        detail: {
+          tabId: this.tabId,
+          virtualMortgages: this.referencedVirtualMortgages,
+        },
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
 
   render() {
@@ -150,6 +191,35 @@ export class MortgageTab extends LitElement {
                             currency: 'EUR',
                           }).format(this.mortgage.input.spesaPerizia)}
                         </dd>
+
+                        ${this.mortgage.input.assicurazioneIncendio
+                          ? html`
+                              <dt>Assicurazione Incendio:</dt>
+                              <dd>
+                                ${new Intl.NumberFormat('it-IT', {
+                                  style: 'currency',
+                                  currency: 'EUR',
+                                }).format(this.mortgage.input.assicurazioneIncendio.valore)}
+                                ${this.mortgage.input.assicurazioneIncendio.tipo === 'onetime'
+                                  ? '(una tantum)'
+                                  : '/mese'}
+                              </dd>
+                            `
+                          : ''}
+                        ${this.mortgage.input.assicurazioneAggiuntiva
+                          ? html`
+                              <dt>Assicurazione Aggiuntiva:</dt>
+                              <dd>
+                                ${new Intl.NumberFormat('it-IT', {
+                                  style: 'currency',
+                                  currency: 'EUR',
+                                }).format(this.mortgage.input.assicurazioneAggiuntiva.valore)}
+                                ${this.mortgage.input.assicurazioneAggiuntiva.tipo === 'onetime'
+                                  ? '(una tantum)'
+                                  : '/mese'}
+                              </dd>
+                            `
+                          : ''}
                       </dl>
                     </div>
                   </div>
@@ -319,6 +389,29 @@ export class MortgageTab extends LitElement {
                 </div>
               `
             : html`<p class="no-data">Nessun dato disponibile</p>`}
+        ${this.showDeleteWarning
+          ? html`
+              <div class="delete-warning-overlay">
+                <div class="delete-warning-dialog">
+                  <h3>⚠️ Mutuo Referenziato</h3>
+                  <p>Questo mutuo è parte dei seguenti mutui virtuali:</p>
+                  <ul class="virtual-list">
+                    ${this.referencedVirtualMortgages.map((name) => html`<li>${name}</li>`)}
+                  </ul>
+                  <p class="warning-text">
+                    Se elimini questo mutuo, verranno eliminati anche i mutui virtuali elencati
+                    sopra.
+                  </p>
+                  <div class="dialog-actions">
+                    <button class="btn-cancel" @click=${this.cancelDeleteWarning}>Annulla</button>
+                    <button class="btn-danger" @click=${this.confirmDeleteWithVirtuals}>
+                      Elimina Comunque
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `
+          : ''}
       </div>
     `;
   }
@@ -365,6 +458,24 @@ export class MortgageTab extends LitElement {
 
     // Spesa perizia
     totalCosts += input.spesaPerizia;
+
+    // Assicurazione Incendio, Scoppio
+    if (input.assicurazioneIncendio) {
+      if (input.assicurazioneIncendio.tipo === 'onetime') {
+        totalCosts += input.assicurazioneIncendio.valore;
+      } else {
+        totalCosts += input.assicurazioneIncendio.valore * numMonths;
+      }
+    }
+
+    // Assicurazione Aggiuntiva
+    if (input.assicurazioneAggiuntiva) {
+      if (input.assicurazioneAggiuntiva.tipo === 'onetime') {
+        totalCosts += input.assicurazioneAggiuntiva.valore;
+      } else {
+        totalCosts += input.assicurazioneAggiuntiva.valore * numMonths;
+      }
+    }
 
     return totalCosts;
   }
@@ -692,6 +803,98 @@ export class MortgageTab extends LitElement {
       padding: 2rem;
       text-align: center;
       color: var(--gray-700);
+    }
+
+    .delete-warning-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .delete-warning-dialog {
+      background: white;
+      border-radius: 0.75rem;
+      padding: 2rem;
+      max-width: 450px;
+      width: 90%;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+
+    .delete-warning-dialog h3 {
+      margin: 0 0 1rem 0;
+      color: var(--danger);
+      font-size: 1.25rem;
+    }
+
+    .delete-warning-dialog p {
+      margin: 0.5rem 0;
+      color: var(--gray-700);
+      line-height: 1.5;
+    }
+
+    .virtual-list {
+      list-style: none;
+      padding: 0.75rem;
+      background: var(--gray-50);
+      border-radius: 0.5rem;
+      border-left: 4px solid var(--danger);
+      margin: 0.75rem 0;
+    }
+
+    .virtual-list li {
+      padding: 0.5rem 0;
+      color: var(--gray-900);
+      font-weight: 500;
+    }
+
+    .virtual-list li:before {
+      content: '• ';
+      color: var(--danger);
+      font-weight: bold;
+      margin-right: 0.5rem;
+    }
+
+    .warning-text {
+      font-size: 0.9rem;
+      color: var(--danger);
+      font-weight: 500;
+      background: rgba(239, 68, 68, 0.1);
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      margin: 1rem 0 0 0;
+    }
+
+    .dialog-actions {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.5rem;
+      justify-content: flex-end;
+    }
+
+    .dialog-actions button {
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+
+    .btn-cancel {
+      background: var(--gray-200);
+      color: var(--gray-900);
+    }
+
+    .btn-cancel:hover {
+      background: var(--gray-300);
     }
 
     @media (max-width: 768px) {

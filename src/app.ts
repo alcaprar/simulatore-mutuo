@@ -1,7 +1,10 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import type { AppTab } from './types.js';
+import type { AppTab, MortgageData } from './types.js';
+import { StorageService } from './storage.js';
 import './components/mortgage-tab.js';
+import './components/virtual-mortgage-tab.js';
+import './components/virtual-mortgage-selector.js';
 import './components/mortgages-summary.js';
 
 interface AppStorageData {
@@ -34,6 +37,12 @@ export class MutuoApp extends LitElement {
 
   @state()
   private showDebug: boolean = false;
+
+  @state()
+  private showVirtualMortgageSelector: boolean = false;
+
+  @state()
+  private availableMortgagesForVirtual: Array<{ tabId: string; mortgage: MortgageData }> = [];
 
   private boundHandleRouteChange = () => this.handleRouteChange();
 
@@ -171,6 +180,60 @@ export class MutuoApp extends LitElement {
     if (this.activeTabId === tabId) {
       this.switchTab(this.tabs[0].id);
     }
+  }
+
+  private openVirtualMortgageSelector(): void {
+    // Load available mortgages (exclude fixed tabs and virtual tabs)
+    const customTabIds = this.tabs.filter((t) => !t.isFixed && !t.isVirtual).map((t) => t.id);
+
+    this.availableMortgagesForVirtual = customTabIds
+      .map((tabId) => {
+        const mortgage = StorageService.getMortgage(tabId);
+        return mortgage ? { tabId, mortgage } : null;
+      })
+      .filter((item): item is { tabId: string; mortgage: MortgageData } => item !== null);
+
+    this.showVirtualMortgageSelector = true;
+  }
+
+  private closeVirtualMortgageSelector(): void {
+    this.showVirtualMortgageSelector = false;
+    this.availableMortgagesForVirtual = [];
+  }
+
+  private addVirtualMortgage(event: CustomEvent<{ name: string; sourceIds: string[] }>): void {
+    const { name, sourceIds } = event.detail;
+
+    let newId = this.generateTabId(`virtual-${name}`);
+
+    // Ensure unique ID
+    let counter = 1;
+    const baseId = newId;
+    while (this.tabs.some((t) => t.id === newId)) {
+      newId = `${baseId}-${counter}`;
+      counter++;
+    }
+
+    const newTab: AppTab = {
+      id: newId,
+      name,
+      isFixed: false,
+      isVirtual: true,
+    };
+
+    this.tabs = [...this.tabs, newTab];
+    this.saveTabsToStorage();
+
+    // Create virtual mortgage in storage
+    StorageService.createVirtualMortgage(newId, name, sourceIds);
+
+    this.closeVirtualMortgageSelector();
+    this.switchTab(newId);
+  }
+
+  private handleDeleteVirtualTab(event: CustomEvent<{ tabId: string }>): void {
+    const { tabId } = event.detail;
+    this.deleteTab(tabId);
   }
 
   private handleKeyDown(event: KeyboardEvent): void {
@@ -322,6 +385,13 @@ export class MutuoApp extends LitElement {
               <button class="add-tab-btn" @click=${this.openAddTabDialog} title="Add new tab">
                 + Aggiungi
               </button>
+              <button
+                class="virtual-mortgage-btn"
+                @click=${this.openVirtualMortgageSelector}
+                title="Create virtual mortgage"
+              >
+                ⊕ Mutuo Virtuale
+              </button>
             </div>
 
             <div class="tabs-content">
@@ -375,12 +445,20 @@ export class MutuoApp extends LitElement {
                     `
                   : activeTab.id === 'resoconto'
                     ? html` <mortgages-summary .tabs=${this.tabs}></mortgages-summary> `
-                    : html`
-                        <mortgage-tab
-                          .tabId=${activeTab.id}
-                          .tabName=${activeTab.name}
-                        ></mortgage-tab>
-                      `
+                    : activeTab.isVirtual
+                      ? html`
+                          <virtual-mortgage-tab
+                            .tabId=${activeTab.id}
+                            .tabName=${activeTab.name}
+                            @delete-virtual-tab=${this.handleDeleteVirtualTab}
+                          ></virtual-mortgage-tab>
+                        `
+                      : html`
+                          <mortgage-tab
+                            .tabId=${activeTab.id}
+                            .tabName=${activeTab.name}
+                          ></mortgage-tab>
+                        `
                 : html`<div class="tab-panel"><p>No tabs available</p></div>`}
             </div>
           </div>
@@ -440,6 +518,15 @@ export class MutuoApp extends LitElement {
                 </div>
               </div>
             </div>
+          `
+        : ''}
+      ${this.showVirtualMortgageSelector
+        ? html`
+            <virtual-mortgage-selector
+              .availableMortgages=${this.availableMortgagesForVirtual}
+              @virtual-created=${this.addVirtualMortgage}
+              @virtual-cancelled=${this.closeVirtualMortgageSelector}
+            ></virtual-mortgage-selector>
           `
         : ''}
     `;
@@ -632,6 +719,23 @@ export class MutuoApp extends LitElement {
 
     .add-tab-btn:hover {
       color: var(--success);
+    }
+
+    .virtual-mortgage-btn {
+      padding: 1rem 1.5rem;
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--gray-700);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: -2px;
+    }
+
+    .virtual-mortgage-btn:hover {
+      color: #9333ea;
     }
 
     .tabs-content {

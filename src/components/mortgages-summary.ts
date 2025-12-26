@@ -1,12 +1,23 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { MortgageData, AppTab, EarlyClosureData } from '../types.js';
+import type { MortgageData, AppTab, EarlyClosureData, VirtualMortgageData } from '../types.js';
 import { StorageService } from '../storage.js';
 import { MortgageCalculator } from '../utils/mortgage-calculator.js';
+import { VirtualMortgageCalculator } from '../utils/virtual-mortgage-calculator.js';
 
 interface MortgageSummaryRow {
   tab: AppTab;
   mortgage: MortgageData;
+  totalInterests: number;
+  totalOtherCosts: number;
+  grandTotal: number;
+}
+
+interface VirtualMortgageSummaryRow {
+  tab: AppTab;
+  virtual: VirtualMortgageData;
+  sourceMortgages: MortgageData[];
+  totalAmount: number;
   totalInterests: number;
   totalOtherCosts: number;
   grandTotal: number;
@@ -20,6 +31,9 @@ export class MortgagesSummary extends LitElement {
   @state()
   private mortgageRows: MortgageSummaryRow[] = [];
 
+  @state()
+  private virtualMortgageRows: VirtualMortgageSummaryRow[] = [];
+
   updated(changedProperties: Map<string, unknown>) {
     if (changedProperties.has('tabs')) {
       this.loadMortgages();
@@ -28,28 +42,56 @@ export class MortgagesSummary extends LitElement {
 
   private loadMortgages(): void {
     const rows: MortgageSummaryRow[] = [];
+    const virtualRows: VirtualMortgageSummaryRow[] = [];
 
     for (const tab of this.tabs) {
       // Skip fixed tabs
       if (tab.isFixed) continue;
 
-      const mortgage = StorageService.getMortgage(tab.id);
-      if (mortgage) {
-        const totalInterests = this._calculateTotalInterests(mortgage);
-        const totalOtherCosts = this._calculateTotalOtherCosts(mortgage);
-        const grandTotal = totalInterests + totalOtherCosts;
+      // Load regular mortgages
+      if (!tab.isVirtual) {
+        const mortgage = StorageService.getMortgage(tab.id);
+        if (mortgage) {
+          const totalInterests = this._calculateTotalInterests(mortgage);
+          const totalOtherCosts = this._calculateTotalOtherCosts(mortgage);
+          const grandTotal = totalInterests + totalOtherCosts;
 
-        rows.push({
-          tab,
-          mortgage,
-          totalInterests,
-          totalOtherCosts,
-          grandTotal,
-        });
+          rows.push({
+            tab,
+            mortgage,
+            totalInterests,
+            totalOtherCosts,
+            grandTotal,
+          });
+        }
+      } else {
+        // Load virtual mortgages
+        const virtual = StorageService.getVirtualMortgage(tab.id);
+        if (virtual) {
+          const sourceMortgages = StorageService.getSourceMortgages(virtual.sourceIds);
+          if (sourceMortgages.length > 0) {
+            const totalAmount = VirtualMortgageCalculator.calculateTotalAmount(sourceMortgages);
+            const totalInterests =
+              VirtualMortgageCalculator.calculateTotalInterest(sourceMortgages);
+            const totalOtherCosts = VirtualMortgageCalculator.calculateTotalFees(sourceMortgages);
+            const grandTotal = totalInterests + totalOtherCosts;
+
+            virtualRows.push({
+              tab,
+              virtual,
+              sourceMortgages,
+              totalAmount,
+              totalInterests,
+              totalOtherCosts,
+              grandTotal,
+            });
+          }
+        }
       }
     }
 
     this.mortgageRows = rows;
+    this.virtualMortgageRows = virtualRows;
   }
 
   private _calculateTotalInterests(mortgage: MortgageData): number {
@@ -74,6 +116,24 @@ export class MortgagesSummary extends LitElement {
 
     // Spesa perizia
     totalCosts += input.spesaPerizia;
+
+    // Assicurazione Incendio, Scoppio
+    if (input.assicurazioneIncendio) {
+      if (input.assicurazioneIncendio.tipo === 'onetime') {
+        totalCosts += input.assicurazioneIncendio.valore;
+      } else {
+        totalCosts += input.assicurazioneIncendio.valore * numMonths;
+      }
+    }
+
+    // Assicurazione Aggiuntiva
+    if (input.assicurazioneAggiuntiva) {
+      if (input.assicurazioneAggiuntiva.tipo === 'onetime') {
+        totalCosts += input.assicurazioneAggiuntiva.valore;
+      } else {
+        totalCosts += input.assicurazioneAggiuntiva.valore * numMonths;
+      }
+    }
 
     return totalCosts;
   }
@@ -156,7 +216,7 @@ export class MortgagesSummary extends LitElement {
   }
 
   render() {
-    if (this.mortgageRows.length === 0) {
+    if (this.mortgageRows.length === 0 && this.virtualMortgageRows.length === 0) {
       return html`
         <div class="no-mortgages">
           <p>Nessun mutuo simulato. Crea una nuova scheda per iniziare.</p>
@@ -241,6 +301,47 @@ export class MortgagesSummary extends LitElement {
                     </tr>
                   `
                 )}
+                ${this.virtualMortgageRows.map(
+                  (row, idx) => html`
+                    <tr
+                      class="virtual-mortgage-row ${(this.mortgageRows.length + idx) % 2 === 0
+                        ? 'even'
+                        : 'odd'}"
+                    >
+                      <td class="bank-name">
+                        <a href="#${row.tab.id}" class="tab-link">
+                          ${row.tab.name}
+                          <span class="virtual-badge">Virtuale</span>
+                        </a>
+                      </td>
+                      <td class="currency">${this._formatCurrency(row.totalAmount)}</td>
+                      <td colspan="2">
+                        <span class="virtual-note">Multipli mutui</span>
+                      </td>
+                      <td colspan="1">
+                        <span class="virtual-note">Vedi dettagli →</span>
+                      </td>
+                      <td class="early-closure-date">
+                        <span class="closure-not-applicable">N/A</span>
+                      </td>
+                      <td class="currency highlight-interest">
+                        ${this._formatCurrency(row.totalInterests)}
+                      </td>
+                      <td class="currency highlight-costs">
+                        ${this._formatCurrency(row.totalOtherCosts)}
+                      </td>
+                      <td class="currency grand-total-value">
+                        ${this._formatCurrency(row.grandTotal)}
+                      </td>
+                      <td class="currency comparison-value">
+                        ${((row.grandTotal / row.totalAmount) * 100).toFixed(2)}%
+                      </td>
+                      <td class="currency comparison-value">
+                        ${((row.totalAmount + row.grandTotal) / row.totalAmount).toFixed(3)}x
+                      </td>
+                    </tr>
+                  `
+                )}
               </tbody>
             </table>
           </div>
@@ -248,6 +349,77 @@ export class MortgagesSummary extends LitElement {
 
         <div class="detailed-breakdown">
           <h2>Dettagli per Mutuo</h2>
+
+          ${this.virtualMortgageRows.length > 0
+            ? html` <h3 class="virtual-section-title">Mutui Virtuali</h3> `
+            : ''}
+          ${this.virtualMortgageRows.map(
+            (row) => html`
+              <div class="mortgage-detail-card virtual-detail-card">
+                <div class="detail-header">
+                  <h3>
+                    ${row.tab.name}
+                    <span class="virtual-badge">Virtuale</span>
+                  </h3>
+                  <a href="#${row.tab.id}" class="view-btn">Visualizza →</a>
+                </div>
+
+                <div class="detail-content">
+                  <div class="detail-section">
+                    <h4>Mutui Combinati</h4>
+                    <ul class="source-mortgages-list">
+                      ${row.sourceMortgages.map(
+                        (m) => html`
+                          <li>
+                            <strong>${m.nome}</strong><br />
+                            ${this._formatCurrency(m.input.importoTotale)} @
+                            ${m.input.tassoInteresse.toFixed(2)}%
+                          </li>
+                        `
+                      )}
+                    </ul>
+                  </div>
+
+                  <div class="detail-section">
+                    <h4>Parametri Combinati</h4>
+                    <dl class="detail-list">
+                      <dt>Importo Totale:</dt>
+                      <dd>${this._formatCurrency(row.totalAmount)}</dd>
+
+                      <dt>Tassi Diversi:</dt>
+                      <dd class="virtual-note">
+                        ${row.sourceMortgages
+                          .map((m) => m.input.tassoInteresse.toFixed(2) + '%')
+                          .join(', ')}
+                      </dd>
+
+                      <dt>Periodi Diversi:</dt>
+                      <dd class="virtual-note">Vedi dettagli sulla scheda</dd>
+                    </dl>
+                  </div>
+
+                  <div class="detail-section">
+                    <h4>Costi Totali</h4>
+                    <dl class="detail-list highlight-section">
+                      <dt>Totale Interessi:</dt>
+                      <dd class="highlight-interest">
+                        ${this._formatCurrency(row.totalInterests)}
+                      </dd>
+
+                      <dt>Totale Altre Spese:</dt>
+                      <dd class="highlight-costs">${this._formatCurrency(row.totalOtherCosts)}</dd>
+
+                      <dt>Costo Totale:</dt>
+                      <dd class="grand-total-value">${this._formatCurrency(row.grandTotal)}</dd>
+                    </dl>
+                  </div>
+                </div>
+              </div>
+            `
+          )}
+          ${this.mortgageRows.length > 0
+            ? html` <h3 class="regular-section-title">Mutui Singoli</h3> `
+            : ''}
           ${this.mortgageRows.map(
             (row) => html`
               <div class="mortgage-detail-card">
@@ -295,6 +467,33 @@ export class MortgagesSummary extends LitElement {
 
                       <dt>Perizia:</dt>
                       <dd>${this._formatCurrency(row.mortgage.input.spesaPerizia)}</dd>
+
+                      ${row.mortgage.input.assicurazioneIncendio
+                        ? html`
+                            <dt>Assicurazione Incendio:</dt>
+                            <dd>
+                              ${this._formatCurrency(
+                                row.mortgage.input.assicurazioneIncendio.valore
+                              )}
+                              ${row.mortgage.input.assicurazioneIncendio.tipo === 'onetime'
+                                ? '(una tantum)'
+                                : '/mese'}
+                            </dd>
+                          `
+                        : ''}
+                      ${row.mortgage.input.assicurazioneAggiuntiva
+                        ? html`
+                            <dt>Assicurazione Aggiuntiva:</dt>
+                            <dd>
+                              ${this._formatCurrency(
+                                row.mortgage.input.assicurazioneAggiuntiva.valore
+                              )}
+                              ${row.mortgage.input.assicurazioneAggiuntiva.tipo === 'onetime'
+                                ? '(una tantum)'
+                                : '/mese'}
+                            </dd>
+                          `
+                        : ''}
                     </dl>
                   </div>
 
@@ -681,6 +880,104 @@ export class MortgagesSummary extends LitElement {
       border-left: 4px solid var(--danger);
       margin: 0;
       font-size: 0.9rem;
+    }
+
+    /* Virtual Mortgage Styles */
+    .virtual-mortgage-row {
+      background: linear-gradient(
+        135deg,
+        rgba(168, 85, 247, 0.03) 0%,
+        rgba(168, 85, 247, 0.01) 100%
+      );
+    }
+
+    .virtual-mortgage-row:hover {
+      background: linear-gradient(
+        135deg,
+        rgba(168, 85, 247, 0.08) 0%,
+        rgba(168, 85, 247, 0.05) 100%
+      );
+    }
+
+    .virtual-badge {
+      display: inline-block;
+      background: var(--secondary, #a855f7);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-left: 0.75rem;
+      text-decoration: none;
+    }
+
+    .virtual-note {
+      color: var(--gray-600);
+      font-style: italic;
+      font-family: inherit;
+    }
+
+    .closure-not-applicable {
+      color: var(--gray-500);
+      font-weight: 500;
+      padding: 0.25rem 0.5rem;
+      background: var(--gray-100);
+      border-radius: 0.25rem;
+      display: inline-block;
+    }
+
+    .virtual-detail-card {
+      border-left: 4px solid var(--secondary, #a855f7);
+      background: linear-gradient(
+        135deg,
+        rgba(168, 85, 247, 0.05) 0%,
+        rgba(168, 85, 247, 0.02) 100%
+      );
+    }
+
+    .virtual-section-title {
+      margin-top: 2rem;
+      margin-bottom: 1.5rem;
+      font-size: 1.25rem;
+      color: var(--secondary, #a855f7);
+      border-bottom: 2px solid var(--secondary, #a855f7);
+      padding-bottom: 0.75rem;
+    }
+
+    .regular-section-title {
+      margin-top: 2rem;
+      margin-bottom: 1.5rem;
+      font-size: 1.25rem;
+      color: var(--primary);
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 0.75rem;
+    }
+
+    .source-mortgages-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .source-mortgages-list li {
+      padding: 0.75rem;
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: 0.375rem;
+      font-size: 0.9rem;
+    }
+
+    .source-mortgages-list li strong {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: var(--gray-900);
+    }
+
+    .source-mortgages-list li br {
+      margin-bottom: 0.25rem;
     }
 
     @media (max-width: 768px) {

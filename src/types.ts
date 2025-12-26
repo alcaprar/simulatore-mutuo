@@ -11,6 +11,14 @@ export interface MortgageInput {
   speseIncassoRata: number; // per month
   spesaPerizia: number;
   numeroPerizie?: number; // number of valuations/inspections (default: 1)
+  assicurazioneIncendio?: {
+    tipo: 'onetime' | 'monthly';
+    valore: number;
+  }; // insurance for fire/explosion (optional)
+  assicurazioneAggiuntiva?: {
+    tipo: 'onetime' | 'monthly';
+    valore: number;
+  }; // additional insurance (death, illness, job loss, etc.) (optional)
   risparmiMensiliForecast?: number; // monthly savings for early closure
   detrazioneRistrutturazione?: number; // renovation deduction amount
   detrazioniInteressi?: boolean; // whether to include interest deductions in early closure calculation
@@ -48,13 +56,37 @@ export interface EarlyClosureData {
   mesiRisparmiati?: number; // months saved compared to full plan
 }
 
+export interface MortgageBreakdown {
+  mortgageId: string; // tab ID of source mortgage
+  mortgageName: string; // name of source mortgage
+  quotaInteressi: number;
+  quotaCapitale: number;
+  totaleRataMensile: number;
+  isActive: boolean; // is this mortgage active in this period?
+}
+
+export interface VirtualAmortizationRow extends AmortizationRow {
+  breakdown: MortgageBreakdown[]; // contribution from each source mortgage
+  activeMortgageCount: number; // how many mortgages are active in this period
+}
+
+export interface VirtualMortgageData {
+  id: string; // "virtual-{timestamp}"
+  nome: string; // display name
+  sourceIds: string[]; // array of tabIds to combine
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface AppTab {
   id: string;
   name: string;
   isFixed: boolean;
+  isVirtual?: boolean; // true if this tab represents a virtual mortgage
 }
 
 export interface TabData {
   tabId: string;
   mortgage?: MortgageData;
+  virtualMortgage?: VirtualMortgageData; // for virtual tabs
 }
