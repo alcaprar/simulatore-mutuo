@@ -1,5 +1,5 @@
 import { LitElement, css, html } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import type { AmortizationRow } from '../types.js';
 import { MortgageCalculator } from '../utils/mortgage-calculator.js';
 
@@ -8,12 +8,18 @@ export class AmortizationTable extends LitElement {
   @property({ type: Array })
   rows: AmortizationRow[] = [];
 
+  @state()
   private currentPage: number = 0;
-  private pageSize: number = 12; // Show 12 months per page
+
+  @state()
+  private pageSize: number = 12; // Show 12 months (1 year) per page by default
+
+  private readonly pageSizeOptions = [12, 24, 36, 48, 60, 72]; // Multiples of 12 (years)
 
   private handlePreviousPage(): void {
     if (this.currentPage > 0) {
       this.currentPage--;
+      this.requestUpdate();
     }
   }
 
@@ -21,7 +27,15 @@ export class AmortizationTable extends LitElement {
     const maxPage = Math.ceil(this.rows.length / this.pageSize) - 1;
     if (this.currentPage < maxPage) {
       this.currentPage++;
+      this.requestUpdate();
     }
+  }
+
+  private handlePageSizeChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    this.pageSize = parseInt(select.value, 10);
+    this.currentPage = 0; // Reset to first page
+    this.requestUpdate();
   }
 
   private get displayedRows(): AmortizationRow[] {
@@ -118,86 +132,49 @@ export class AmortizationTable extends LitElement {
           </tbody>
         </table>
 
-        ${this.totalPages > 1
-          ? html`
-              <div class="pagination">
-                <button
-                  class="pagination-btn"
-                  @click=${this.handlePreviousPage}
-                  ?disabled=${this.currentPage === 0}
-                >
-                  ← Precedente
-                </button>
-                <span class="pagination-info">
-                  Pagina ${this.currentPageNumber} di ${this.totalPages}
-                </span>
-                <button
-                  class="pagination-btn"
-                  @click=${this.handleNextPage}
-                  ?disabled=${this.currentPage === this.totalPages - 1}
-                >
-                  Successiva →
-                </button>
-              </div>
-            `
-          : ''}
+        <div class="pagination-controls">
+          <div class="page-size-selector">
+            <label for="page-size-select">Righe per pagina:</label>
+            <select
+              id="page-size-select"
+              .value=${this.pageSize.toString()}
+              @change=${this.handlePageSizeChange}
+            >
+              ${this.pageSizeOptions.map(
+                (size) =>
+                  html`<option value="${size}">
+                    ${size} (${size / 12} anno${size / 12 > 1 ? 'i' : ''})
+                  </option>`
+              )}
+            </select>
+          </div>
 
-        <div class="table-export">
-          <button class="export-btn" @click=${this.exportToCSV}>📥 Scarica CSV</button>
+          ${this.totalPages > 1
+            ? html`
+                <div class="pagination">
+                  <button
+                    class="pagination-btn"
+                    @click=${this.handlePreviousPage}
+                    ?disabled=${this.currentPage === 0}
+                  >
+                    ← Precedente
+                  </button>
+                  <span class="pagination-info">
+                    Pagina ${this.currentPageNumber} di ${this.totalPages}
+                  </span>
+                  <button
+                    class="pagination-btn"
+                    @click=${this.handleNextPage}
+                    ?disabled=${this.currentPage === this.totalPages - 1}
+                  >
+                    Successiva →
+                  </button>
+                </div>
+              `
+            : ''}
         </div>
       </div>
     `;
-  }
-
-  private exportToCSV(): void {
-    const headers = [
-      'Anno/Mese',
-      'Quota Interessi',
-      'Quota Capitale',
-      'Rata Mensile',
-      'Tot. Interessi',
-      'Tot. Capitale',
-      'Capitale Rimanente',
-    ];
-
-    if (this.hasSavingsData) {
-      headers.push('Risparmi Accumulati');
-    }
-
-    const rows = this.rows.map((row) => {
-      const rowData = [
-        `${row.anno}/${String(row.mese + 1).padStart(2, '0')}`,
-        row.quotaInteressi.toFixed(2),
-        row.quotaCapitale.toFixed(2),
-        row.totaleRataMensile.toFixed(2),
-        row.totaleIntaressPagato.toFixed(2),
-        row.totalePrincipalPagato.toFixed(2),
-        row.capitaleRimanente.toFixed(2),
-      ];
-
-      if (this.hasSavingsData) {
-        rowData.push(row.risparmiAccumulati !== undefined ? row.risparmiAccumulati.toFixed(2) : '');
-      }
-
-      return rowData;
-    });
-
-    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(','));
-
-    const blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-
-    link.setAttribute('href', url);
-    link.setAttribute(
-      'download',
-      `piano_ammortamento_${new Date().toISOString().split('T')[0]}.csv`
-    );
-    link.style.visibility = 'hidden';
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   }
 
   static styles = css`
@@ -292,6 +269,47 @@ export class AmortizationTable extends LitElement {
       text-align: right;
     }
 
+    .pagination-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1rem;
+    }
+
+    .page-size-selector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+    }
+
+    .page-size-selector label {
+      font-weight: 600;
+      color: var(--gray-900);
+      font-size: 0.95rem;
+    }
+
+    .page-size-selector select {
+      padding: 0.5rem 0.75rem;
+      border: 2px solid var(--gray-200);
+      border-radius: 0.5rem;
+      background: white;
+      color: var(--gray-900);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .page-size-selector select:hover {
+      border-color: var(--primary);
+    }
+
+    .page-size-selector select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
     .pagination {
       display: flex;
       align-items: center;
@@ -327,26 +345,6 @@ export class AmortizationTable extends LitElement {
     .pagination-info {
       color: var(--gray-700);
       font-weight: 600;
-    }
-
-    .table-export {
-      display: flex;
-      justify-content: center;
-    }
-
-    .export-btn {
-      padding: 0.75rem 1.5rem;
-      background: var(--success);
-      color: white;
-      border: none;
-      border-radius: 0.5rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .export-btn:hover {
-      background: #059669;
     }
 
     @media (max-width: 768px) {

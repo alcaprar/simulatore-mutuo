@@ -13,7 +13,10 @@ export class VirtualAmortizationTable extends LitElement {
   @state()
   private expandedRows: Set<number> = new Set();
 
-  private readonly rowsPerPage = 12;
+  @state()
+  private rowsPerPage: number = 12; // Show 12 months (1 year) per page by default
+
+  private readonly pageSizeOptions = [12, 24, 36, 48, 60, 72]; // Multiples of 12 (years)
 
   get totalPages(): number {
     return Math.ceil(this.rows.length / this.rowsPerPage);
@@ -37,13 +40,22 @@ export class VirtualAmortizationTable extends LitElement {
   private previousPage(): void {
     if (this.currentPage > 1) {
       this.currentPage--;
+      this.requestUpdate();
     }
   }
 
   private nextPage(): void {
     if (this.currentPage < this.totalPages) {
       this.currentPage++;
+      this.requestUpdate();
     }
+  }
+
+  private handlePageSizeChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    this.rowsPerPage = parseInt(select.value, 10);
+    this.currentPage = 1; // Reset to first page
+    this.requestUpdate();
   }
 
   render() {
@@ -176,22 +188,40 @@ export class VirtualAmortizationTable extends LitElement {
           </table>
         </div>
 
-        <div class="pagination">
-          <button
-            @click=${this.previousPage}
-            ?disabled=${this.currentPage === 1}
-            class="btn-pagination"
-          >
-            ← Precedente
-          </button>
-          <span class="page-info">Pagina ${this.currentPage} di ${this.totalPages}</span>
-          <button
-            @click=${this.nextPage}
-            ?disabled=${this.currentPage === this.totalPages}
-            class="btn-pagination"
-          >
-            Successiva →
-          </button>
+        <div class="pagination-controls">
+          <div class="page-size-selector">
+            <label for="page-size-select">Righe per pagina:</label>
+            <select
+              id="page-size-select"
+              .value=${this.rowsPerPage.toString()}
+              @change=${this.handlePageSizeChange}
+            >
+              ${this.pageSizeOptions.map(
+                (size) =>
+                  html`<option value="${size}">
+                    ${size} (${size / 12} anno${size / 12 > 1 ? 'i' : ''})
+                  </option>`
+              )}
+            </select>
+          </div>
+
+          <div class="pagination">
+            <button
+              @click=${this.previousPage}
+              ?disabled=${this.currentPage === 1}
+              class="btn-pagination"
+            >
+              ← Precedente
+            </button>
+            <span class="page-info">Pagina ${this.currentPage} di ${this.totalPages}</span>
+            <button
+              @click=${this.nextPage}
+              ?disabled=${this.currentPage === this.totalPages}
+              class="btn-pagination"
+            >
+              Successiva →
+            </button>
+          </div>
         </div>
       </div>
     `;
@@ -374,6 +404,47 @@ export class VirtualAmortizationTable extends LitElement {
       border-radius: 0.25rem;
       font-size: 0.75rem;
       font-weight: 600;
+    }
+
+    .pagination-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1rem;
+    }
+
+    .page-size-selector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+    }
+
+    .page-size-selector label {
+      font-weight: 600;
+      color: var(--gray-900);
+      font-size: 0.95rem;
+    }
+
+    .page-size-selector select {
+      padding: 0.5rem 0.75rem;
+      border: 2px solid var(--gray-200);
+      border-radius: 0.5rem;
+      background: white;
+      color: var(--gray-900);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .page-size-selector select:hover {
+      border-color: var(--primary);
+    }
+
+    .page-size-selector select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
 
     .pagination {
