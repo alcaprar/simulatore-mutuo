@@ -97,68 +97,72 @@ export class AmortizationTable extends LitElement {
           </div>
         </div>
 
-        <table class="amortization-table">
-          <thead>
-            <tr>
-              <th>Anno/Mese</th>
-              <th>Quota Interessi</th>
-              <th>Quota Capitale</th>
-              <th>Rata Mensile</th>
-              <th>Tot. Interessi</th>
-              <th>Tot. Capitale</th>
-              <th>Capitale Rimanente</th>
-              ${this.hasDeductionsData ? html`<th>Detrazioni Accumulate</th>` : ''}
-              ${this.hasSavingsData ? html`<th>Risparmi Accumulati</th>` : ''}
-              ${this.hasEarlyClosureResources ? html`<th>Totale per Chiusura Anticipata</th>` : ''}
-            </tr>
-          </thead>
-          <tbody>
-            ${this.displayedRows.map(
-              (row, idx) => html`
-                <tr class="${idx % 2 === 0 ? 'even' : 'odd'}">
-                  <td class="row-numero">${row.anno}/${String(row.mese + 1).padStart(2, '0')}</td>
-                  <td class="row-currency">
-                    ${MortgageCalculator.formatCurrency(row.quotaInteressi)}
-                  </td>
-                  <td class="row-currency">
-                    ${MortgageCalculator.formatCurrency(row.quotaCapitale)}
-                  </td>
-                  <td class="row-currency">
-                    ${MortgageCalculator.formatCurrency(row.totaleRataMensile)}
-                  </td>
-                  <td class="row-currency">
-                    ${MortgageCalculator.formatCurrency(row.totaleIntaressPagato)}
-                  </td>
-                  <td class="row-currency">
-                    ${MortgageCalculator.formatCurrency(row.totalePrincipalPagato)}
-                  </td>
-                  <td class="row-currency">
-                    ${MortgageCalculator.formatCurrency(row.capitaleRimanente)}
-                  </td>
-                  ${this.hasDeductionsData
-                    ? html`<td class="row-currency">
-                        ${row.detrazioniAccumulate !== undefined
-                          ? MortgageCalculator.formatCurrency(row.detrazioniAccumulate)
-                          : '—'}
-                      </td>`
-                    : ''}
-                  ${this.hasSavingsData
-                    ? html`<td class="row-currency">
-                        ${row.risparmiAccumulati !== undefined
-                          ? MortgageCalculator.formatCurrency(row.risparmiAccumulati)
-                          : '—'}
-                      </td>`
-                    : ''}
-                  ${this.hasEarlyClosureResources
-                    ? html`<td class="row-currency strong">
-                        ${MortgageCalculator.formatCurrency(this.getTotalForEarlyClosure(row))}
-                      </td>`
-                    : ''}
-                </tr>
-              `
-            )}
-          </tbody>
-        </table>
+        <div class="table-wrapper">
+          <table class="amortization-table">
+            <thead>
+              <tr>
+                <th>Anno/Mese</th>
+                <th>Quota Interessi</th>
+                <th>Quota Capitale</th>
+                <th>Rata Mensile</th>
+                <th>Tot. Interessi</th>
+                <th>Tot. Capitale</th>
+                <th>Capitale Rimanente</th>
+                ${this.hasDeductionsData ? html`<th>Detrazioni Accumulate</th>` : ''}
+                ${this.hasSavingsData ? html`<th>Risparmi Accumulati</th>` : ''}
+                ${this.hasEarlyClosureResources
+                  ? html`<th>Totale per Chiusura Anticipata</th>`
+                  : ''}
+              </tr>
+            </thead>
+            <tbody>
+              ${this.displayedRows.map(
+                (row, idx) => html`
+                  <tr class="${idx % 2 === 0 ? 'even' : 'odd'}">
+                    <td class="row-numero">${row.anno}/${String(row.mese + 1).padStart(2, '0')}</td>
+                    <td class="row-currency">
+                      ${MortgageCalculator.formatCurrency(row.quotaInteressi)}
+                    </td>
+                    <td class="row-currency">
+                      ${MortgageCalculator.formatCurrency(row.quotaCapitale)}
+                    </td>
+                    <td class="row-currency">
+                      ${MortgageCalculator.formatCurrency(row.totaleRataMensile)}
+                    </td>
+                    <td class="row-currency">
+                      ${MortgageCalculator.formatCurrency(row.totaleIntaressPagato)}
+                    </td>
+                    <td class="row-currency">
+                      ${MortgageCalculator.formatCurrency(row.totalePrincipalPagato)}
+                    </td>
+                    <td class="row-currency">
+                      ${MortgageCalculator.formatCurrency(row.capitaleRimanente)}
+                    </td>
+                    ${this.hasDeductionsData
+                      ? html`<td class="row-currency">
+                          ${row.detrazioniAccumulate !== undefined
+                            ? MortgageCalculator.formatCurrency(row.detrazioniAccumulate)
+                            : '—'}
+                        </td>`
+                      : ''}
+                    ${this.hasSavingsData
+                      ? html`<td class="row-currency">
+                          ${row.risparmiAccumulati !== undefined
+                            ? MortgageCalculator.formatCurrency(row.risparmiAccumulati)
+                            : '—'}
+                        </td>`
+                      : ''}
+                    ${this.hasEarlyClosureResources
+                      ? html`<td class="row-currency strong">
+                          ${MortgageCalculator.formatCurrency(this.getTotalForEarlyClosure(row))}
+                        </td>`
+                      : ''}
+                  </tr>
+                `
+              )}
+            </tbody>
+          </table>
+        </div>
 
         <div class="pagination-controls">
           <div class="page-size-selector">
@@ -222,6 +226,13 @@ export class AmortizationTable extends LitElement {
       gap: 1.5rem;
     }
 
+    .table-wrapper {
+      overflow-x: auto;
+      border: 1px solid var(--gray-200);
+      border-radius: 0.5rem;
+      -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
+    }
+
     .table-info {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -252,11 +263,10 @@ export class AmortizationTable extends LitElement {
 
     .amortization-table {
       width: 100%;
+      min-width: 800px; /* ensure table has minimum width for scrolling */
       border-collapse: collapse;
       background: white;
-      border-radius: 0.5rem;
       overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     th {
