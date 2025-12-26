@@ -59,7 +59,8 @@ export class MortgageCalculator {
     }
 
     // Spesa perizia
-    totalFees += input.spesaPerizia;
+    const numeroPerizie = input.numeroPerizie || 1;
+    totalFees += input.spesaPerizia * numeroPerizie;
 
     return totalFees;
   }

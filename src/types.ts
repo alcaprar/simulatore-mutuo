@@ -10,6 +10,7 @@ export interface MortgageInput {
   };
   speseIncassoRata: number; // per month
   spesaPerizia: number;
+  numeroPerizie?: number; // number of valuations/inspections (default: 1)
   risparmiMensiliForecast?: number; // monthly savings for early closure
   detrazioneRistrutturazione?: number; // renovation deduction amount
   detrazioniInteressi?: boolean; // whether to include interest deductions in early closure calculation

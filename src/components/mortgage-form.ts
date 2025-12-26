@@ -35,6 +35,9 @@ export class MortgageForm extends LitElement {
   private spesaPerizia: number = 600;
 
   @state()
+  private numeroPerizie: number = 1;
+
+  @state()
   private risparmiMensiliForecast: number = 0;
 
   @state()
@@ -80,6 +83,7 @@ export class MortgageForm extends LitElement {
       this.speseIstruttoriaValore = this.initialInput.speseIstruttoria.valore;
       this.speseIncassoRata = this.initialInput.speseIncassoRata;
       this.spesaPerizia = this.initialInput.spesaPerizia;
+      this.numeroPerizie = this.initialInput.numeroPerizie || 1;
       this.risparmiMensiliForecast = this.initialInput.risparmiMensiliForecast || 0;
       this.detrazioneRistrutturazione = this.initialInput.detrazioneRistrutturazione || 0;
       this.detrazioniInteressi = this.initialInput.detrazioniInteressi || false;
@@ -94,6 +98,7 @@ export class MortgageForm extends LitElement {
       this.speseIstruttoriaValore = 1.0;
       this.speseIncassoRata = 0;
       this.spesaPerizia = 600;
+      this.numeroPerizie = 1;
       this.risparmiMensiliForecast = 0;
       this.detrazioneRistrutturazione = 0;
       this.detrazioniInteressi = false;
@@ -128,6 +133,7 @@ export class MortgageForm extends LitElement {
       },
       speseIncassoRata: this.speseIncassoRata,
       spesaPerizia: this.spesaPerizia,
+      numeroPerizie: this.numeroPerizie || undefined,
       risparmiMensiliForecast: this.risparmiMensiliForecast || undefined,
       detrazioneRistrutturazione: this.detrazioneRistrutturazione || undefined,
       detrazioniInteressi: this.detrazioniInteressi || undefined,
@@ -152,6 +158,7 @@ export class MortgageForm extends LitElement {
     this.speseIstruttoriaValore = 1.0;
     this.speseIncassoRata = 0;
     this.spesaPerizia = 600;
+    this.numeroPerizie = 1;
     this.risparmiMensiliForecast = 0;
     this.detrazioneRistrutturazione = 0;
     this.detrazioniInteressi = false;
@@ -301,6 +308,32 @@ export class MortgageForm extends LitElement {
               }}
             />
           </div>
+
+          <div class="form-group">
+            <label for="numero-perizie">
+              Numero Perizie
+              <span
+                class="info-icon"
+                title="In alcuni casi, come il mutuo a stato avanzamento lavori (SAL) ci possono essere più di una perizia"
+              >
+                ℹ️
+              </span>
+            </label>
+            <input
+              id="numero-perizie"
+              type="number"
+              min="1"
+              step="1"
+              .value=${this.numeroPerizie}
+              @input=${(e: Event) => {
+                this.numeroPerizie = Math.max(1, parseInt((e.target as HTMLInputElement).value));
+              }}
+            />
+            <small class="form-hint"
+              >In alcuni casi, come il mutuo a stato avanzamento lavori (SAL), ci possono essere più
+              di una perizia.</small
+            >
+          </div>
         </div>
 
         <div class="form-section">
@@ -436,6 +469,17 @@ export class MortgageForm extends LitElement {
       margin-top: 0.25rem;
       font-size: 0.85rem;
       color: var(--gray-700);
+    }
+
+    .info-icon {
+      cursor: help;
+      margin-left: 0.5rem;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+
+    .info-icon:hover {
+      opacity: 1;
     }
 
     .fee-input-group {
