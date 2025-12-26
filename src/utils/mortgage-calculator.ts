@@ -302,4 +302,37 @@ export class MortgageCalculator {
     // Savings are not enough to close early
     return { isPossible: false };
   }
+
+  /**
+   * Calculate early closure based on amortization schedule data
+   * This method derives the early closure from the table rows, ensuring
+   * consistency between the detail view and the amortization table
+   */
+  static calculateEarlyClosureFromSchedule(schedule: AmortizationRow[]): EarlyClosureData {
+    if (schedule.length === 0) {
+      return { isPossible: false };
+    }
+
+    // Find the first row where accumulated resources >= remaining capital
+    for (const row of schedule) {
+      const totalForClosure = (row.risparmiAccumulati || 0) + (row.detrazioniAccumulate || 0);
+
+      if (totalForClosure >= row.capitaleRimanente) {
+        const monthsFromStart = row.periodo;
+        const totalMonths = schedule.length;
+        const monthsSaved = totalMonths - monthsFromStart;
+
+        return {
+          isPossible: true,
+          meseChiusura: row.periodo,
+          annoChiusura: row.anno,
+          risparmiAccumulati: totalForClosure,
+          capitalePagato: row.capitaleRimanente,
+          mesiRisparmiati: monthsSaved,
+        };
+      }
+    }
+
+    return { isPossible: false };
+  }
 }

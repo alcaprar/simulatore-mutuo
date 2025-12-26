@@ -265,12 +265,8 @@ export class MortgagesSummary extends LitElement {
       return { isPossible: false };
     }
 
-    return MortgageCalculator.calculateEarlyClosure(
-      mortgage.amortization,
-      input.risparmiMensiliForecast || 0,
-      input.detrazioniInteressi || false,
-      input.detrazioneRistrutturazione || 0
-    );
+    // Use the amortization schedule data directly for consistency with the table display
+    return MortgageCalculator.calculateEarlyClosureFromSchedule(mortgage.amortization);
   }
 
   private _calculateInterestSaved(mortgage: MortgageData, closure: EarlyClosureData): number {

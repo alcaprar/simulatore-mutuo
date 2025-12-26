@@ -513,12 +513,8 @@ export class MortgageTab extends LitElement {
       return { isPossible: false };
     }
 
-    return MortgageCalculator.calculateEarlyClosure(
-      this.mortgage.amortization,
-      input.risparmiMensiliForecast || 0,
-      input.detrazioniInteressi || false,
-      input.detrazioneRistrutturazione || 0
-    );
+    // Use the amortization schedule data directly for consistency with the table display
+    return MortgageCalculator.calculateEarlyClosureFromSchedule(this.mortgage.amortization);
   }
 
   static styles = css`
