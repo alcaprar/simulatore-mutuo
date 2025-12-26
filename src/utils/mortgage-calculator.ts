@@ -88,16 +88,16 @@ export class MortgageCalculator {
 
     // Pre-calculate yearly interest deductions if enabled
     const yearlyInterestDeductions: Record<number, number> = {};
+    const monthlyInterestPaid: number[] = [];
     if (input.detrazioniInteressi) {
       // We need a temporary schedule to calculate interest deductions
       let tempRemainingCapital = principalAmount;
-      let tempTotalInterestPaid = 0;
       let tempCurrentYear = input.annoPartenza;
       let tempCurrentMonth = input.mesePartenza;
 
       for (let periodo = 1; periodo <= totalMonths; periodo++) {
         const tempInterestPortion = tempRemainingCapital * monthlyRate;
-        tempTotalInterestPaid += tempInterestPortion;
+        monthlyInterestPaid.push(tempInterestPortion);
         tempRemainingCapital -= monthlyPayment - tempInterestPortion;
 
         if (tempRemainingCapital < 0) {
@@ -106,7 +106,11 @@ export class MortgageCalculator {
 
         // Interest deductions happen in July (month 6)
         if (tempCurrentMonth === 6) {
-          const interestDeduction = Math.min(tempTotalInterestPaid * 0.19, 760);
+          // Calculate interest paid in the last 12 months (looking back from July)
+          const interestLast12Months = monthlyInterestPaid
+            .slice(Math.max(0, periodo - 12), periodo)
+            .reduce((sum, interest) => sum + interest, 0);
+          const interestDeduction = Math.min(interestLast12Months * 0.19, 760);
           yearlyInterestDeductions[tempCurrentYear] = interestDeduction;
         }
 
