@@ -11,42 +11,71 @@ export class StorageService {
   private static readonly APP_NAMESPACE = 'simulatore-mutuo';
 
   /**
-   * Save mortgage data for a specific tab
+   * Run migrations on startup to ensure data consistency
    */
-  static saveMortgage(tabId: string, mortgage: MortgageData): void {
-    const data: TabData = { tabId, mortgage };
+  static runMigrations(): void {
+    const data = this.loadAppData();
+    let needsSave = false;
+
+    // Migration: Copy tabId to mortgage.id if not already set
+    Object.entries(data.mortgages).forEach(([tabId, tabData]) => {
+      if (tabData.mortgage && !tabData.mortgage.id) {
+        tabData.mortgage.id = tabId;
+        needsSave = true;
+      }
+    });
+
+    // Migration: Ensure virtual mortgages use tabId as their identifier
+    Object.entries(data.virtualMortgages).forEach(([tabId, virtualData]) => {
+      if (!virtualData.id) {
+        virtualData.id = tabId;
+        needsSave = true;
+      }
+    });
+
+    if (needsSave) {
+      this.saveAppData(data);
+      console.log('Storage migrations completed');
+    }
+  }
+
+  /**
+   * Save mortgage data for a specific id
+   */
+  static saveMortgage(id: string, mortgage: MortgageData): void {
+    const data: TabData = { tabId: id, mortgage };
     const appData = this.loadAppData();
-    appData.mortgages[tabId] = data;
+    appData.mortgages[id] = data;
     this.saveAppData(appData);
   }
 
   /**
-   * Get mortgage data for a specific tab
+   * Get mortgage data for a specific id
    */
-  static getMortgage(tabId: string): MortgageData | null {
+  static getMortgage(id: string): MortgageData | null {
     const appData = this.loadAppData();
-    const stored = appData.mortgages[tabId];
+    const stored = appData.mortgages[id];
     if (!stored) return null;
     return stored.mortgage || null;
   }
 
   /**
-   * Delete mortgage data for a specific tab
+   * Delete mortgage data for a specific id
    */
-  static deleteMortgage(tabId: string): void {
+  static deleteMortgage(id: string): void {
     const appData = this.loadAppData();
-    delete appData.mortgages[tabId];
+    delete appData.mortgages[id];
     this.saveAppData(appData);
   }
 
   /**
    * Create a new mortgage with calculated amortization
    */
-  static createMortgage(tabId: string, nome: string, input: MortgageInput) {
+  static createMortgage(id: string, nome: string, input: MortgageInput) {
     const amortization = MortgageCalculator.generateAmortization(input);
 
     const mortgage: MortgageData = {
-      id: `mortgage-${Date.now()}`,
+      id,
       nome,
       input,
       amortization,
@@ -54,19 +83,19 @@ export class StorageService {
       updatedAt: Date.now(),
     };
 
-    this.saveMortgage(tabId, mortgage);
+    this.saveMortgage(id, mortgage);
     return mortgage;
   }
 
   /**
    * Update an existing mortgage
    */
-  static updateMortgage(tabId: string, nome: string, input: MortgageInput) {
-    const existing = this.getMortgage(tabId);
+  static updateMortgage(id: string, nome: string, input: MortgageInput) {
+    const existing = this.getMortgage(id);
     const amortization = MortgageCalculator.generateAmortization(input);
 
     const mortgage: MortgageData = {
-      id: existing?.id || `mortgage-${Date.now()}`,
+      id,
       nome,
       input,
       amortization,
@@ -74,7 +103,7 @@ export class StorageService {
       updatedAt: Date.now(),
     };
 
-    this.saveMortgage(tabId, mortgage);
+    this.saveMortgage(id, mortgage);
     return mortgage;
   }
 
@@ -82,12 +111,12 @@ export class StorageService {
    * Create a new virtual mortgage
    */
   static createVirtualMortgage(
-    tabId: string,
+    id: string,
     nome: string,
     sourceIds: string[]
   ): VirtualMortgageData {
     const virtual: VirtualMortgageData = {
-      id: `virtual-${Date.now()}`,
+      id,
       nome,
       sourceIds,
       createdAt: Date.now(),
@@ -95,43 +124,43 @@ export class StorageService {
     };
 
     const appData = this.loadAppData();
-    appData.virtualMortgages[tabId] = virtual;
+    appData.virtualMortgages[id] = virtual;
     this.saveAppData(appData);
 
     return virtual;
   }
 
   /**
-   * Get virtual mortgage for a specific tab
+   * Get virtual mortgage for a specific id
    */
-  static getVirtualMortgage(tabId: string): VirtualMortgageData | null {
+  static getVirtualMortgage(id: string): VirtualMortgageData | null {
     const appData = this.loadAppData();
-    return appData.virtualMortgages[tabId] || null;
+    return appData.virtualMortgages[id] || null;
   }
 
   /**
-   * Delete virtual mortgage for a specific tab
+   * Delete virtual mortgage for a specific id
    */
-  static deleteVirtualMortgage(tabId: string): void {
+  static deleteVirtualMortgage(id: string): void {
     const appData = this.loadAppData();
-    delete appData.virtualMortgages[tabId];
+    delete appData.virtualMortgages[id];
     this.saveAppData(appData);
   }
 
   /**
    * Check if a mortgage is referenced by any virtual mortgage
    */
-  static isReferencedByVirtual(mortgageTabId: string): boolean {
-    return this.getVirtualsReferencingMortgage(mortgageTabId).length > 0;
+  static isReferencedByVirtual(mortgageId: string): boolean {
+    return this.getVirtualsReferencingMortgage(mortgageId).length > 0;
   }
 
   /**
    * Get all virtual mortgages that reference a specific mortgage
    */
-  static getVirtualsReferencingMortgage(mortgageTabId: string): VirtualMortgageData[] {
+  static getVirtualsReferencingMortgage(mortgageId: string): VirtualMortgageData[] {
     const appData = this.loadAppData();
     return Object.values(appData.virtualMortgages).filter((virtual) =>
-      virtual.sourceIds.includes(mortgageTabId)
+      virtual.sourceIds.includes(mortgageId)
     );
   }
 
@@ -180,7 +209,7 @@ export class StorageService {
 
   /**
    * Import shared mortgage data, generating new IDs to avoid conflicts
-   * Returns mapping of mortgage names to new tab IDs for virtual mortgage remapping
+   * Returns mapping of mortgage names to new IDs for virtual mortgage remapping
    */
   static importSharedData(shareData: ShareData): {
     mortgageTabIds: Map<string, string>;
@@ -194,46 +223,43 @@ export class StorageService {
     if (shareData.mortgages) {
       shareData.mortgages.forEach((sharedMortgage) => {
         // Check if a mortgage with this name already exists
-        let tabId: string | undefined;
-        for (const [id, tabData] of Object.entries(data.mortgages)) {
+        let id: string | undefined;
+        for (const [mortgageId, tabData] of Object.entries(data.mortgages)) {
           if (tabData.mortgage?.nome === sharedMortgage.nome) {
-            tabId = id;
+            id = mortgageId;
             break;
           }
         }
 
-        // If not found, generate a new tab ID
-        if (!tabId) {
-          tabId = this.generateUniqueTabId(sharedMortgage.nome, data);
+        // If not found, generate a new ID
+        if (!id) {
+          id = this.generateUniqueTabId(sharedMortgage.nome, data);
         }
-
-        // Generate new mortgage ID
-        const mortgageId = `mortgage-${Date.now() + Math.random()}`;
 
         // Calculate amortization from input
         const amortization = MortgageCalculator.generateAmortization(sharedMortgage.input);
 
         // Create mortgage data
         const mortgage: MortgageData = {
-          id: mortgageId,
+          id,
           nome: sharedMortgage.nome,
           input: sharedMortgage.input,
           amortization,
-          createdAt: data.mortgages[tabId]?.mortgage?.createdAt || Date.now(),
+          createdAt: data.mortgages[id]?.mortgage?.createdAt || Date.now(),
           updatedAt: Date.now(),
         };
 
         // Store (overwrites if exists)
-        const tabData: TabData = { tabId, mortgage };
-        data.mortgages[tabId] = tabData;
-        mortgageTabIds.set(sharedMortgage.nome, tabId); // For virtual mapping
+        const tabData: TabData = { tabId: id, mortgage };
+        data.mortgages[id] = tabData;
+        mortgageTabIds.set(sharedMortgage.nome, id); // For virtual mapping
       });
     }
 
     // Import virtual mortgages (after regular mortgages)
     if (shareData.virtualMortgages) {
       shareData.virtualMortgages.forEach((sharedVirtual) => {
-        // Remap sourceIds from shared names to actual tabIds
+        // Remap sourceIds from shared names to actual IDs
         const remappedSourceIds = sharedVirtual.sourceIds
           .map((name) => mortgageTabIds.get(name))
           .filter((id) => id !== undefined) as string[];
@@ -243,33 +269,31 @@ export class StorageService {
           return;
         }
 
-        const virtualId = `virtual-${Date.now() + Math.random()}`;
-
         // Check if a virtual mortgage with this name already exists
-        let tabId: string | undefined;
-        for (const [id, vMortgage] of Object.entries(data.virtualMortgages)) {
+        let id: string | undefined;
+        for (const [virtualId, vMortgage] of Object.entries(data.virtualMortgages)) {
           if (vMortgage.nome === sharedVirtual.nome) {
-            tabId = id;
+            id = virtualId;
             break;
           }
         }
 
-        // If not found, generate a new tab ID
-        if (!tabId) {
-          tabId = this.generateUniqueTabId(sharedVirtual.nome, data);
+        // If not found, generate a new ID
+        if (!id) {
+          id = this.generateUniqueTabId(sharedVirtual.nome, data);
         }
 
         const virtualMortgage: VirtualMortgageData = {
-          id: virtualId,
+          id,
           nome: sharedVirtual.nome,
           sourceIds: remappedSourceIds,
-          createdAt: data.virtualMortgages[tabId]?.createdAt || Date.now(),
+          createdAt: data.virtualMortgages[id]?.createdAt || Date.now(),
           updatedAt: Date.now(),
         };
 
-        // Store by tabId (not virtualId) - consistent with regular mortgages
-        data.virtualMortgages[tabId] = virtualMortgage;
-        virtualTabIds.push(tabId);
+        // Store by ID
+        data.virtualMortgages[id] = virtualMortgage;
+        virtualTabIds.push(id);
       });
     }
 

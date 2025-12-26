@@ -38,6 +38,8 @@ export class MutuoApp extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    // Run migrations on startup
+    StorageService.runMigrations();
     // Check for share parameter BEFORE loading tabs
     this.handleShareURL();
     this.loadTabsFromStorage();
