@@ -234,12 +234,14 @@ export class MortgageForm extends LitElement {
               <label for="mese">Mese Partenza</label>
               <select
                 id="mese"
-                .value=${this.mesePartenza.toString()}
                 @change=${(e: Event) => {
                   this.mesePartenza = parseInt((e.target as HTMLSelectElement).value);
                 }}
               >
-                ${this.months.map((m, i) => html`<option value="${i}">${m}</option>`)}
+                ${this.months.map(
+                  (m, i) =>
+                    html`<option value="${i}" ?selected=${i === this.mesePartenza}>${m}</option>`
+                )}
               </select>
             </div>
 
