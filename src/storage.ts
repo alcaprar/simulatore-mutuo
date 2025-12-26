@@ -193,9 +193,22 @@ export class StorageService {
     // Import regular mortgages
     if (shareData.mortgages) {
       shareData.mortgages.forEach((sharedMortgage) => {
-        // Generate new IDs
+        // Check if a mortgage with this name already exists
+        let tabId: string | undefined;
+        for (const [id, tabData] of Object.entries(data.mortgages)) {
+          if (tabData.mortgage?.nome === sharedMortgage.nome) {
+            tabId = id;
+            break;
+          }
+        }
+
+        // If not found, generate a new tab ID
+        if (!tabId) {
+          tabId = this.generateUniqueTabId(sharedMortgage.nome, data);
+        }
+
+        // Generate new mortgage ID
         const mortgageId = `mortgage-${Date.now() + Math.random()}`;
-        const tabId = this.generateUniqueTabId(sharedMortgage.nome, data);
 
         // Calculate amortization from input
         const amortization = MortgageCalculator.generateAmortization(sharedMortgage.input);
@@ -206,11 +219,11 @@ export class StorageService {
           nome: sharedMortgage.nome,
           input: sharedMortgage.input,
           amortization,
-          createdAt: Date.now(),
+          createdAt: data.mortgages[tabId]?.mortgage?.createdAt || Date.now(),
           updatedAt: Date.now(),
         };
 
-        // Store
+        // Store (overwrites if exists)
         const tabData: TabData = { tabId, mortgage };
         data.mortgages[tabId] = tabData;
         mortgageTabIds.set(sharedMortgage.nome, tabId); // For virtual mapping
@@ -231,17 +244,31 @@ export class StorageService {
         }
 
         const virtualId = `virtual-${Date.now() + Math.random()}`;
-        const tabId = this.generateUniqueTabId(sharedVirtual.nome, data);
+
+        // Check if a virtual mortgage with this name already exists
+        let tabId: string | undefined;
+        for (const [id, vMortgage] of Object.entries(data.virtualMortgages)) {
+          if (vMortgage.nome === sharedVirtual.nome) {
+            tabId = id;
+            break;
+          }
+        }
+
+        // If not found, generate a new tab ID
+        if (!tabId) {
+          tabId = this.generateUniqueTabId(sharedVirtual.nome, data);
+        }
 
         const virtualMortgage: VirtualMortgageData = {
           id: virtualId,
           nome: sharedVirtual.nome,
           sourceIds: remappedSourceIds,
-          createdAt: Date.now(),
+          createdAt: data.virtualMortgages[tabId]?.createdAt || Date.now(),
           updatedAt: Date.now(),
         };
 
-        data.virtualMortgages[virtualId] = virtualMortgage;
+        // Store by tabId (not virtualId) - consistent with regular mortgages
+        data.virtualMortgages[tabId] = virtualMortgage;
         virtualTabIds.push(tabId);
       });
     }
