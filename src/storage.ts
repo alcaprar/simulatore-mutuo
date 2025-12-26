@@ -1,5 +1,6 @@
 import type { MortgageData, TabData, MortgageInput, VirtualMortgageData } from './types.js';
 import { MortgageCalculator } from './utils/mortgage-calculator.js';
+import type { ShareData } from './utils/url-share.js';
 
 interface AppStorageData {
   mortgages: Record<string, TabData>;
@@ -175,5 +176,101 @@ export class StorageService {
    */
   private static saveAppData(data: AppStorageData): void {
     localStorage.setItem(this.APP_NAMESPACE, JSON.stringify(data));
+  }
+
+  /**
+   * Import shared mortgage data, generating new IDs to avoid conflicts
+   * Returns mapping of mortgage names to new tab IDs for virtual mortgage remapping
+   */
+  static importSharedData(shareData: ShareData): {
+    mortgageTabIds: Map<string, string>;
+    virtualTabIds: string[];
+  } {
+    const data = this.loadAppData();
+    const mortgageTabIds = new Map<string, string>();
+    const virtualTabIds: string[] = [];
+
+    // Import regular mortgages
+    if (shareData.mortgages) {
+      shareData.mortgages.forEach((sharedMortgage) => {
+        // Generate new IDs
+        const mortgageId = `mortgage-${Date.now() + Math.random()}`;
+        const tabId = this.generateUniqueTabId(sharedMortgage.nome, data);
+
+        // Calculate amortization from input
+        const amortization = MortgageCalculator.generateAmortization(sharedMortgage.input);
+
+        // Create mortgage data
+        const mortgage: MortgageData = {
+          id: mortgageId,
+          nome: sharedMortgage.nome,
+          input: sharedMortgage.input,
+          amortization,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+
+        // Store
+        const tabData: TabData = { tabId, mortgage };
+        data.mortgages[tabId] = tabData;
+        mortgageTabIds.set(sharedMortgage.nome, tabId); // For virtual mapping
+      });
+    }
+
+    // Import virtual mortgages (after regular mortgages)
+    if (shareData.virtualMortgages) {
+      shareData.virtualMortgages.forEach((sharedVirtual) => {
+        // Remap sourceIds from shared names to actual tabIds
+        const remappedSourceIds = sharedVirtual.sourceIds
+          .map((name) => mortgageTabIds.get(name))
+          .filter((id) => id !== undefined) as string[];
+
+        if (remappedSourceIds.length === 0) {
+          console.warn('Virtual mortgage has no valid sources, skipping');
+          return;
+        }
+
+        const virtualId = `virtual-${Date.now() + Math.random()}`;
+        const tabId = this.generateUniqueTabId(sharedVirtual.nome, data);
+
+        const virtualMortgage: VirtualMortgageData = {
+          id: virtualId,
+          nome: sharedVirtual.nome,
+          sourceIds: remappedSourceIds,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+
+        data.virtualMortgages[virtualId] = virtualMortgage;
+        virtualTabIds.push(tabId);
+      });
+    }
+
+    this.saveAppData(data);
+    return { mortgageTabIds, virtualTabIds };
+  }
+
+  /**
+   * Generate unique tab ID, avoiding conflicts
+   */
+  private static generateUniqueTabId(name: string, data: AppStorageData): string {
+    // Use same logic as app.ts generateTabId
+    const baseId = name
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^\w-]/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    let tabId = baseId;
+    let counter = 1;
+
+    while (data.mortgages[tabId] || data.virtualMortgages[tabId]) {
+      tabId = `${baseId}-${counter}`;
+      counter++;
+    }
+
+    return tabId;
   }
 }

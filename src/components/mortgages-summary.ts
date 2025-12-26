@@ -4,6 +4,7 @@ import type { MortgageData, AppTab, EarlyClosureData, VirtualMortgageData } from
 import { StorageService } from '../storage.js';
 import { MortgageCalculator } from '../utils/mortgage-calculator.js';
 import { VirtualMortgageCalculator } from '../utils/virtual-mortgage-calculator.js';
+import { URLShareService, type ShareData } from '../utils/url-share.js';
 
 interface MortgageSummaryRow {
   tab: AppTab;
@@ -284,6 +285,37 @@ export class MortgagesSummary extends LitElement {
     return totalInterest - closureRow.totaleIntaressPagato;
   }
 
+  private handleShareAll(): void {
+    const shareData: ShareData = {
+      mortgages: this.mortgageRows.map((row) => ({
+        nome: row.mortgage.nome,
+        input: row.mortgage.input,
+      })),
+      virtualMortgages: this.virtualMortgageRows.map((row) => ({
+        nome: row.tab.name,
+        sourceIds: row.virtual.sourceIds,
+      })),
+    };
+
+    const shareURL = URLShareService.generateShareURL(shareData);
+
+    // Copy to clipboard
+    navigator.clipboard
+      .writeText(shareURL)
+      .then(() => {
+        const mortgageCount = shareData.mortgages?.length || 0;
+        const virtualCount = shareData.virtualMortgages?.length || 0;
+        alert(
+          `Link copiato! Include ${mortgageCount} mutuo/i e ${virtualCount} mutuo/i virtuale/i.`
+        );
+      })
+      .catch((err) => {
+        console.error('Failed to copy:', err);
+        // Fallback: show URL in prompt
+        prompt('Copia questo link:', shareURL);
+      });
+  }
+
   render() {
     if (this.mortgageRows.length === 0 && this.virtualMortgageRows.length === 0) {
       return html`
@@ -296,7 +328,16 @@ export class MortgagesSummary extends LitElement {
     return html`
       <div class="summary-container">
         <div class="mortgages-table-section">
-          <h2>Dettagli Mutui</h2>
+          <div class="section-header">
+            <h2>Dettagli Mutui</h2>
+            ${this.mortgageRows.length > 0 || this.virtualMortgageRows.length > 0
+              ? html`
+                  <button class="btn-share-all" @click=${this.handleShareAll}>
+                    📤 Condividi Tutto
+                  </button>
+                `
+              : ''}
+          </div>
           <div class="table-wrapper">
             <table class="mortgages-table">
               <thead>
@@ -779,6 +820,35 @@ export class MortgagesSummary extends LitElement {
     /* Table Section */
     .mortgages-table-section {
       margin-bottom: 3rem;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      gap: 1rem;
+    }
+
+    .section-header h2 {
+      margin: 0;
+      flex: 1;
+    }
+
+    .btn-share-all {
+      padding: 0.75rem 1.5rem;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-share-all:hover {
+      background: #2563eb;
     }
 
     .table-wrapper {

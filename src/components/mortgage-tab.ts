@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import type { MortgageData, MortgageInput, EarlyClosureData } from '../types.js';
 import { StorageService } from '../storage.js';
 import { MortgageCalculator } from '../utils/mortgage-calculator.js';
+import { URLShareService, type ShareData } from '../utils/url-share.js';
 import './mortgage-form.js';
 import './amortization-table.js';
 
@@ -106,6 +107,33 @@ export class MortgageTab extends LitElement {
     );
   }
 
+  private handleShare(): void {
+    if (!this.mortgage) return;
+
+    const shareData: ShareData = {
+      mortgages: [
+        {
+          nome: this.mortgage.nome,
+          input: this.mortgage.input,
+        },
+      ],
+    };
+
+    const shareURL = URLShareService.generateShareURL(shareData);
+
+    // Copy to clipboard
+    navigator.clipboard
+      .writeText(shareURL)
+      .then(() => {
+        alert('Link copiato negli appunti!');
+      })
+      .catch((err) => {
+        console.error('Failed to copy:', err);
+        // Fallback: show URL in prompt
+        prompt('Copia questo link:', shareURL);
+      });
+  }
+
   render() {
     return html`
       <div class="mortgage-tab-container">
@@ -128,6 +156,7 @@ export class MortgageTab extends LitElement {
                       <button class="btn-secondary" @click=${this.handleEditMortgage}>
                         ✎ Modifica
                       </button>
+                      <button class="btn-share" @click=${this.handleShare}>📤 Condividi</button>
                       <button class="btn-danger" @click=${this.handleDeleteMortgage}>
                         🗑️ Elimina
                       </button>
@@ -565,7 +594,8 @@ export class MortgageTab extends LitElement {
     }
 
     .btn-secondary,
-    .btn-danger {
+    .btn-danger,
+    .btn-share {
       padding: 0.5rem 1rem;
       font-size: 0.875rem;
       font-weight: 600;
@@ -583,6 +613,15 @@ export class MortgageTab extends LitElement {
 
     .btn-secondary:hover {
       background: var(--gray-300);
+    }
+
+    .btn-share {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-share:hover {
+      background: #2563eb;
     }
 
     .btn-danger {

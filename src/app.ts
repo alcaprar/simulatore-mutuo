@@ -2,6 +2,7 @@ import { LitElement, css, html } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import type { AppTab, MortgageData } from './types.js';
 import { StorageService } from './storage.js';
+import { URLShareService } from './utils/url-share.js';
 import './components/mortgage-tab.js';
 import './components/virtual-mortgage-tab.js';
 import './components/virtual-mortgage-selector.js';
@@ -48,6 +49,8 @@ export class MutuoApp extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    // Check for share parameter BEFORE loading tabs
+    this.handleShareURL();
     this.loadTabsFromStorage();
     window.addEventListener('hashchange', this.boundHandleRouteChange);
     this.handleRouteChange();
@@ -118,6 +121,55 @@ export class MutuoApp extends LitElement {
       // No hash, set to resoconto (default)
       window.location.hash = 'resoconto';
     }
+  }
+
+  /**
+   * Handle share URL parameter if present
+   */
+  private handleShareURL(): void {
+    const urlParams = new URLSearchParams(window.location.search);
+    const shareParam = urlParams.get('share');
+
+    if (!shareParam) return;
+
+    try {
+      const shareData = URLShareService.decode(shareParam);
+
+      if (!shareData) {
+        console.error('Invalid share data');
+        alert('Link di condivisione non valido');
+        this.clearShareParam();
+        return;
+      }
+
+      // Import the data
+      const { mortgageTabIds, virtualTabIds } = StorageService.importSharedData(shareData);
+
+      // Notify user of successful import
+      const mortgageCount = mortgageTabIds.size;
+      const virtualCount = virtualTabIds.length;
+      alert(`Importati ${mortgageCount} mutuo/i e ${virtualCount} mutuo/i virtuale/i`);
+
+      // Redirect to first imported mortgage or resoconto
+      const firstTabId = Array.from(mortgageTabIds.values())[0] || 'resoconto';
+
+      // Clear share param and redirect
+      this.clearShareParam();
+      window.location.hash = firstTabId;
+    } catch (e) {
+      console.error('Failed to import shared data:', e);
+      alert("Errore durante l'importazione dei dati");
+      this.clearShareParam();
+    }
+  }
+
+  /**
+   * Clear share parameter from URL
+   */
+  private clearShareParam(): void {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('share');
+    window.history.replaceState({}, '', url.toString());
   }
 
   private generateTabId(name: string): string {
