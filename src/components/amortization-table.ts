@@ -56,6 +56,10 @@ export class AmortizationTable extends LitElement {
     return this.rows.some((row) => row.risparmiAccumulati !== undefined);
   }
 
+  private get hasDeductionsData(): boolean {
+    return this.rows.some((row) => row.detrazioniAccumulate !== undefined);
+  }
+
   render() {
     if (this.rows.length === 0) {
       return html`<p class="no-data">Nessun dato disponibile</p>`;
@@ -93,6 +97,7 @@ export class AmortizationTable extends LitElement {
               <th>Tot. Interessi</th>
               <th>Tot. Capitale</th>
               <th>Capitale Rimanente</th>
+              ${this.hasDeductionsData ? html`<th>Detrazioni Accumulate</th>` : ''}
               ${this.hasSavingsData ? html`<th>Risparmi Accumulati</th>` : ''}
             </tr>
           </thead>
@@ -119,6 +124,13 @@ export class AmortizationTable extends LitElement {
                   <td class="row-currency">
                     ${MortgageCalculator.formatCurrency(row.capitaleRimanente)}
                   </td>
+                  ${this.hasDeductionsData
+                    ? html`<td class="row-currency">
+                        ${row.detrazioniAccumulate !== undefined
+                          ? MortgageCalculator.formatCurrency(row.detrazioniAccumulate)
+                          : '—'}
+                      </td>`
+                    : ''}
                   ${this.hasSavingsData
                     ? html`<td class="row-currency">
                         ${row.risparmiAccumulati !== undefined

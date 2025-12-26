@@ -36,6 +36,7 @@ export interface AmortizationRow {
   totalePrincipalPagato: number;
   capitaleRimanente: number;
   risparmiAccumulati?: number;
+  detrazioniAccumulate?: number; // accumulated deductions (renovation + interest)
 }
 
 export interface MortgageData {

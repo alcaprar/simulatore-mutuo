@@ -84,6 +84,44 @@ export class MortgageCalculator {
     let totalInterestPaid = 0;
     let totalPrincipalPaid = 0;
     let accumulatedSavings = 0;
+    let accumulatedDeductions = 0;
+
+    // Pre-calculate yearly interest deductions if enabled
+    const yearlyInterestDeductions: Record<number, number> = {};
+    if (input.detrazioniInteressi) {
+      // We need a temporary schedule to calculate interest deductions
+      let tempRemainingCapital = principalAmount;
+      let tempTotalInterestPaid = 0;
+      let tempCurrentYear = input.annoPartenza;
+      let tempCurrentMonth = input.mesePartenza;
+
+      for (let periodo = 1; periodo <= totalMonths; periodo++) {
+        const tempInterestPortion = tempRemainingCapital * monthlyRate;
+        tempTotalInterestPaid += tempInterestPortion;
+        tempRemainingCapital -= monthlyPayment - tempInterestPortion;
+
+        if (tempRemainingCapital < 0) {
+          tempRemainingCapital = 0;
+        }
+
+        // Interest deductions happen in July (month 6)
+        if (tempCurrentMonth === 6) {
+          const interestDeduction = Math.min(tempTotalInterestPaid * 0.19, 760);
+          yearlyInterestDeductions[tempCurrentYear] = interestDeduction;
+        }
+
+        tempCurrentMonth++;
+        if (tempCurrentMonth > 11) {
+          tempCurrentMonth = 0;
+          tempCurrentYear++;
+        }
+      }
+    }
+
+    // Calculate renovation deduction (capped at €96,000)
+    const cappedRenovationAmount = Math.min(input.detrazioneRistrutturazione || 0, 96000);
+    const renovationDeduction =
+      cappedRenovationAmount > 0 ? (cappedRenovationAmount * 0.36) / 10 : 0;
 
     let currentMonth = input.mesePartenza;
     let currentYear = input.annoPartenza;
@@ -112,6 +150,21 @@ export class MortgageCalculator {
         accumulatedSavings += input.risparmiMensiliForecast;
       }
 
+      // Accumulate deductions
+      // Add interest deduction if in July
+      if (
+        input.detrazioniInteressi &&
+        currentMonth === 6 &&
+        yearlyInterestDeductions[currentYear]
+      ) {
+        accumulatedDeductions += yearlyInterestDeductions[currentYear];
+      }
+
+      // Add renovation deduction every month (spread across 12 months)
+      if (renovationDeduction > 0) {
+        accumulatedDeductions += renovationDeduction / 12;
+      }
+
       // Add collection fees to the monthly payment (if any)
       const totalMonthlyPayment = monthlyPayment + input.speseIncassoRata;
 
@@ -131,6 +184,14 @@ export class MortgageCalculator {
       // Only add accumulated savings if forecasted savings are provided
       if (input.risparmiMensiliForecast && input.risparmiMensiliForecast > 0) {
         row.risparmiAccumulati = accumulatedSavings;
+      }
+
+      // Only add accumulated deductions if deductions are enabled or renovation amount is set
+      const hasDeductions =
+        input.detrazioniInteressi ||
+        (input.detrazioneRistrutturazione && input.detrazioneRistrutturazione > 0);
+      if (hasDeductions) {
+        row.detrazioniAccumulate = accumulatedDeductions;
       }
 
       schedule.push(row);
