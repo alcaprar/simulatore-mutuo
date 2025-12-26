@@ -60,6 +60,16 @@ export class AmortizationTable extends LitElement {
     return this.rows.some((row) => row.detrazioniAccumulate !== undefined);
   }
 
+  private get hasEarlyClosureResources(): boolean {
+    return this.hasSavingsData || this.hasDeductionsData;
+  }
+
+  private getTotalForEarlyClosure(row: AmortizationRow): number {
+    const savings = row.risparmiAccumulati || 0;
+    const deductions = row.detrazioniAccumulate || 0;
+    return savings + deductions;
+  }
+
   render() {
     if (this.rows.length === 0) {
       return html`<p class="no-data">Nessun dato disponibile</p>`;
@@ -99,6 +109,7 @@ export class AmortizationTable extends LitElement {
               <th>Capitale Rimanente</th>
               ${this.hasDeductionsData ? html`<th>Detrazioni Accumulate</th>` : ''}
               ${this.hasSavingsData ? html`<th>Risparmi Accumulati</th>` : ''}
+              ${this.hasEarlyClosureResources ? html`<th>Totale per Chiusura Anticipata</th>` : ''}
             </tr>
           </thead>
           <tbody>
@@ -136,6 +147,11 @@ export class AmortizationTable extends LitElement {
                         ${row.risparmiAccumulati !== undefined
                           ? MortgageCalculator.formatCurrency(row.risparmiAccumulati)
                           : '—'}
+                      </td>`
+                    : ''}
+                  ${this.hasEarlyClosureResources
+                    ? html`<td class="row-currency strong">
+                        ${MortgageCalculator.formatCurrency(this.getTotalForEarlyClosure(row))}
                       </td>`
                     : ''}
                 </tr>
