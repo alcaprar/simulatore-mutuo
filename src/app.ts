@@ -8,11 +8,6 @@ import './components/virtual-mortgage-tab.js';
 import './components/virtual-mortgage-selector.js';
 import './components/mortgages-summary.js';
 
-interface AppStorageData {
-  tabs: AppTab[];
-  mortgages: Record<string, unknown>;
-}
-
 @customElement('mutuo-app')
 export class MutuoApp extends LitElement {
   @state()
@@ -31,12 +26,6 @@ export class MutuoApp extends LitElement {
   private newTabName: string = '';
 
   @state()
-  private editingTabId: string | null = null;
-
-  @state()
-  private editingTabName: string = '';
-
-  @state()
   private showDebug: boolean = false;
 
   @state()
@@ -53,6 +42,12 @@ export class MutuoApp extends LitElement {
     this.handleShareURL();
     this.loadTabsFromStorage();
     window.addEventListener('hashchange', this.boundHandleRouteChange);
+
+    // Listen for tab changes from child components
+    this.addEventListener('tabs-changed', () => {
+      this.loadTabsFromStorage();
+    });
+
     this.handleRouteChange();
   }
 
@@ -62,44 +57,16 @@ export class MutuoApp extends LitElement {
   }
 
   private loadTabsFromStorage(): void {
-    const appData = this.loadAppData();
-    if (appData.tabs && Array.isArray(appData.tabs)) {
-      try {
-        // Keep fixed tabs and add stored custom tabs
-        const fixedTabs = [
-          { id: 'impostazioni', name: 'Impostazioni', isFixed: true },
-          { id: 'resoconto', name: 'Resoconto', isFixed: true },
-        ];
-        const customTabs = appData.tabs.filter((t: AppTab) => !t.isFixed);
-        this.tabs = [...fixedTabs, ...customTabs];
-      } catch (e) {
-        console.error('Failed to load tabs from storage:', e);
-      }
-    }
-  }
+    // Fixed tabs are always present
+    const fixedTabs = [
+      { id: 'impostazioni', name: 'Impostazioni', isFixed: true },
+      { id: 'resoconto', name: 'Resoconto', isFixed: true },
+    ];
 
-  private saveTabsToStorage(): void {
-    const appData = this.loadAppData();
-    appData.tabs = this.tabs;
-    this.saveAppData(appData);
-  }
+    // Compute custom tabs from mortgages
+    const customTabs = StorageService.computeTabs();
 
-  private loadAppData(): AppStorageData {
-    const stored = localStorage.getItem('simulatore-mutuo');
-    if (!stored) {
-      return { tabs: [], mortgages: {} };
-    }
-
-    try {
-      return JSON.parse(stored);
-    } catch (e) {
-      console.error('Failed to load app data:', e);
-      return { tabs: [], mortgages: {} };
-    }
-  }
-
-  private saveAppData(data: AppStorageData): void {
-    localStorage.setItem('simulatore-mutuo', JSON.stringify(data));
+    this.tabs = [...fixedTabs, ...customTabs];
   }
 
   private switchTab(tabId: string): void {
@@ -144,6 +111,9 @@ export class MutuoApp extends LitElement {
 
       // Import the data
       const { mortgageTabIds, virtualTabIds } = StorageService.importSharedData(shareData);
+
+      // RELOAD TABS - this is the fix for the sharing bug!
+      this.loadTabsFromStorage();
 
       // Notify user of successful import
       const mortgageCount = mortgageTabIds.size;
@@ -195,27 +165,22 @@ export class MutuoApp extends LitElement {
 
   private addNewTab(): void {
     if (this.newTabName.trim()) {
+      // Generate tab ID from name
       let newId = this.generateTabId(this.newTabName);
 
-      // Ensure unique ID by appending a number if needed
+      // Ensure unique ID
+      const existingIds = StorageService.getAllTabIds();
       let counter = 1;
       const baseId = newId;
-      while (this.tabs.some((t) => t.id === newId)) {
+      while (existingIds.includes(newId)) {
         newId = `${baseId}-${counter}`;
         counter++;
       }
 
-      this.tabs = [
-        ...this.tabs,
-        {
-          id: newId,
-          name: this.newTabName.trim(),
-          isFixed: false,
-        },
-      ];
-      this.saveTabsToStorage();
-      this.switchTab(newId);
+      // Tab will be created automatically when mortgage is saved
+      // Just switch to the new tab and show the form
       this.closeAddTabDialog();
+      this.switchTab(newId);
     }
   }
 
@@ -225,12 +190,19 @@ export class MutuoApp extends LitElement {
       return; // Cannot delete fixed tabs
     }
 
-    this.tabs = this.tabs.filter((t) => t.id !== tabId);
-    this.saveTabsToStorage();
+    // Delete the underlying mortgage or virtual mortgage
+    if (tabToDelete?.isVirtual) {
+      StorageService.deleteVirtualMortgage(tabId);
+    } else {
+      StorageService.deleteMortgage(tabId);
+    }
+
+    // Reload tabs from storage
+    this.loadTabsFromStorage();
 
     // Switch to another tab if the active tab was deleted
     if (this.activeTabId === tabId) {
-      this.switchTab(this.tabs[0].id);
+      this.switchTab('resoconto');
     }
   }
 
@@ -266,18 +238,11 @@ export class MutuoApp extends LitElement {
       counter++;
     }
 
-    const newTab: AppTab = {
-      id: newId,
-      name,
-      isFixed: false,
-      isVirtual: true,
-    };
-
-    this.tabs = [...this.tabs, newTab];
-    this.saveTabsToStorage();
-
     // Create virtual mortgage in storage
     StorageService.createVirtualMortgage(newId, name, sourceIds);
+
+    // Reload tabs to include the newly created virtual mortgage
+    this.loadTabsFromStorage();
 
     this.closeVirtualMortgageSelector();
     this.switchTab(newId);
@@ -290,44 +255,10 @@ export class MutuoApp extends LitElement {
 
   private handleKeyDown(event: KeyboardEvent): void {
     if (event.key === 'Enter') {
-      if (this.editingTabId) {
-        this.saveTabNameEdit();
-      } else {
-        this.addNewTab();
-      }
+      this.addNewTab();
     } else if (event.key === 'Escape') {
-      if (this.editingTabId) {
-        this.closeTabNameEdit();
-      } else {
-        this.closeAddTabDialog();
-      }
+      this.closeAddTabDialog();
     }
-  }
-
-  private openTabNameEdit(tabId: string, currentName: string): void {
-    this.editingTabId = tabId;
-    this.editingTabName = currentName;
-  }
-
-  private closeTabNameEdit(): void {
-    this.editingTabId = null;
-    this.editingTabName = '';
-  }
-
-  private saveTabNameEdit(): void {
-    if (!this.editingTabId || !this.editingTabName.trim()) {
-      return;
-    }
-
-    // Update the tab name
-    const tabIndex = this.tabs.findIndex((t) => t.id === this.editingTabId);
-    if (tabIndex >= 0) {
-      this.tabs[tabIndex].name = this.editingTabName.trim();
-      this.tabs = [...this.tabs]; // Trigger reactivity
-      this.saveTabsToStorage();
-    }
-
-    this.closeTabNameEdit();
   }
 
   private getLocalStorageData(): Record<string, unknown> {
@@ -371,67 +302,26 @@ export class MutuoApp extends LitElement {
             <div class="tabs-nav">
               ${this.tabs.map(
                 (tab) => html`
-                  ${this.editingTabId === tab.id
-                    ? html`
-                        <div class="tab-edit-container">
-                          <input
-                            type="text"
-                            class="tab-edit-input"
-                            .value=${this.editingTabName}
-                            @input=${(e: Event) => {
-                              this.editingTabName = (e.target as HTMLInputElement).value;
+                  <button
+                    class="tab-btn ${this.activeTabId === tab.id ? 'active' : ''}"
+                    @click=${() => this.switchTab(tab.id)}
+                  >
+                    ${tab.name}
+                    ${!tab.isFixed
+                      ? html`
+                          <button
+                            class="tab-close-btn"
+                            @click=${(e: Event) => {
+                              e.stopPropagation();
+                              this.deleteTab(tab.id);
                             }}
-                            @keydown=${this.handleKeyDown}
-                            autofocus
-                          />
-                          <button
-                            class="tab-edit-confirm"
-                            @click=${this.saveTabNameEdit}
-                            title="Save"
-                          >
-                            ✓
-                          </button>
-                          <button
-                            class="tab-edit-cancel"
-                            @click=${this.closeTabNameEdit}
-                            title="Cancel"
+                            title="Delete tab"
                           >
                             ✕
                           </button>
-                        </div>
-                      `
-                    : html`
-                        <button
-                          class="tab-btn ${this.activeTabId === tab.id ? 'active' : ''}"
-                          @click=${() => this.switchTab(tab.id)}
-                        >
-                          ${tab.name}
-                          ${!tab.isFixed
-                            ? html`
-                                <button
-                                  class="tab-edit-btn"
-                                  @click=${(e: Event) => {
-                                    e.stopPropagation();
-                                    this.openTabNameEdit(tab.id, tab.name);
-                                  }}
-                                  title="Edit tab name"
-                                >
-                                  ✎
-                                </button>
-                                <button
-                                  class="tab-close-btn"
-                                  @click=${(e: Event) => {
-                                    e.stopPropagation();
-                                    this.deleteTab(tab.id);
-                                  }}
-                                  title="Delete tab"
-                                >
-                                  ✕
-                                </button>
-                              `
-                            : ''}
-                        </button>
-                      `}
+                        `
+                      : ''}
+                  </button>
                 `
               )}
               <button class="add-tab-btn" @click=${this.openAddTabDialog} title="Add new tab">
@@ -684,76 +574,6 @@ export class MutuoApp extends LitElement {
 
     .tab-close-btn:hover {
       opacity: 1;
-    }
-
-    .tab-edit-btn {
-      background: none;
-      border: none;
-      color: currentColor;
-      cursor: pointer;
-      font-size: 0.875rem;
-      padding: 0 0.25rem;
-      display: inline-flex;
-      align-items: center;
-      opacity: 0.6;
-      transition: opacity 0.2s;
-      margin-left: 0.25rem;
-    }
-
-    .tab-edit-btn:hover {
-      opacity: 1;
-    }
-
-    .tab-edit-container {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem;
-      margin-bottom: -2px;
-    }
-
-    .tab-edit-input {
-      padding: 0.5rem;
-      border: 2px solid var(--primary);
-      border-radius: 0.25rem;
-      font-size: 1rem;
-      font-weight: 600;
-      font-family: inherit;
-      min-width: 120px;
-    }
-
-    .tab-edit-input:focus {
-      outline: none;
-      border-color: #2563eb;
-    }
-
-    .tab-edit-confirm,
-    .tab-edit-cancel {
-      padding: 0.25rem 0.5rem;
-      border: none;
-      border-radius: 0.25rem;
-      cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 600;
-      transition: all 0.2s;
-    }
-
-    .tab-edit-confirm {
-      background: var(--success);
-      color: white;
-    }
-
-    .tab-edit-confirm:hover {
-      background: #059669;
-    }
-
-    .tab-edit-cancel {
-      background: var(--danger);
-      color: white;
-    }
-
-    .tab-edit-cancel:hover {
-      background: #dc2626;
     }
 
     .add-tab-btn {

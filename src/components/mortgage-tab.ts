@@ -58,6 +58,14 @@ export class MortgageTab extends LitElement {
 
     this.mortgage = StorageService.createMortgage(this.tabId, nome, input);
     this.showForm = false;
+
+    // Notify app to reload tabs (mortgage name may have changed)
+    this.dispatchEvent(
+      new CustomEvent('tabs-changed', {
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
 
   private handleEditMortgage(): void {
@@ -83,6 +91,14 @@ export class MortgageTab extends LitElement {
       StorageService.deleteMortgage(this.tabId);
       this.mortgage = null;
       this.showForm = true;
+
+      // Notify app to reload tabs (this mortgage is gone)
+      this.dispatchEvent(
+        new CustomEvent('tabs-changed', {
+          bubbles: true,
+          composed: true,
+        })
+      );
     }
     this.showDeleteWarning = false;
   }

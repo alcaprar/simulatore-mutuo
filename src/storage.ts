@@ -273,4 +273,55 @@ export class StorageService {
 
     return tabId;
   }
+
+  /**
+   * Compute tabs from stored mortgages and virtual mortgages
+   * Returns array of AppTab objects for UI rendering
+   */
+  static computeTabs(): Array<{
+    id: string;
+    name: string;
+    isFixed: boolean;
+    isVirtual?: boolean;
+  }> {
+    const data = this.loadAppData();
+    const tabs: Array<{
+      id: string;
+      name: string;
+      isFixed: boolean;
+      isVirtual?: boolean;
+    }> = [];
+
+    // Add regular mortgage tabs
+    Object.entries(data.mortgages).forEach(([tabId, tabData]) => {
+      if (tabData.mortgage) {
+        tabs.push({
+          id: tabId,
+          name: tabData.mortgage.nome,
+          isFixed: false,
+          isVirtual: false,
+        });
+      }
+    });
+
+    // Add virtual mortgage tabs
+    Object.entries(data.virtualMortgages).forEach(([tabId, virtualData]) => {
+      tabs.push({
+        id: tabId,
+        name: virtualData.nome,
+        isFixed: false,
+        isVirtual: true,
+      });
+    });
+
+    return tabs;
+  }
+
+  /**
+   * Get all tab IDs (mortgage and virtual tabs)
+   */
+  static getAllTabIds(): string[] {
+    const data = this.loadAppData();
+    return [...Object.keys(data.mortgages), ...Object.keys(data.virtualMortgages)];
+  }
 }

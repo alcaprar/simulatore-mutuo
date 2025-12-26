@@ -96,6 +96,14 @@ export class VirtualMortgageTab extends LitElement {
 
     StorageService.deleteVirtualMortgage(this.tabId);
 
+    // Notify app to reload tabs (this virtual mortgage is gone)
+    this.dispatchEvent(
+      new CustomEvent('tabs-changed', {
+        bubbles: true,
+        composed: true,
+      })
+    );
+
     // Emit event to parent to remove tab
     this.dispatchEvent(
       new CustomEvent('delete-virtual-tab', {
