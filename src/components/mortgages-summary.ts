@@ -286,6 +286,12 @@ export class MortgagesSummary extends LitElement {
   }
 
   private handleShareAll(): void {
+    // Create a map of tab IDs to mortgage names for virtual mortgage source remapping
+    const tabIdToName = new Map<string, string>();
+    this.mortgageRows.forEach((row) => {
+      tabIdToName.set(row.tab.id, row.mortgage.nome);
+    });
+
     const shareData: ShareData = {
       mortgages: this.mortgageRows.map((row) => ({
         nome: row.mortgage.nome,
@@ -293,7 +299,8 @@ export class MortgagesSummary extends LitElement {
       })),
       virtualMortgages: this.virtualMortgageRows.map((row) => ({
         nome: row.tab.name,
-        sourceIds: row.virtual.sourceIds,
+        // Convert tab IDs to mortgage names for import remapping
+        sourceIds: row.virtual.sourceIds.map((tabId) => tabIdToName.get(tabId) || tabId),
       })),
     };
 
